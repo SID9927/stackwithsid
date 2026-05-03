@@ -1,65 +1,123 @@
-import Image from "next/image";
+'use client'
 
-export default function Home() {
+import { useState, useEffect } from 'react'
+import { FileText, Wrench, Zap, Users, BookOpen, MessageSquare, Star, Layers, Code2, Atom, Server, Triangle, Network, Palette, FileCode, Database, Box } from 'lucide-react'
+import { getSupabase } from '@/lib/supabase'
+
+// Sub-components
+import Hero from '@/components/home/Hero'
+import StatsRow from '@/components/home/StatsRow'
+import Features from '@/components/home/Features'
+import StackChips from '@/components/home/StackChips'
+import CTABanner from '@/components/home/CTABanner'
+
+// ── Data Constants ──────────────────────────────────────────────────
+const STATS_INITIAL = [
+  { label: 'Articles',   value: '50+',  icon: FileText },
+  { label: 'Dev Tools',  value: '30+',  icon: Wrench },
+  { label: 'Q&As',       value: '200+', icon: Zap },
+  { label: 'Community',  value: '1K+',  icon: Users },
+]
+
+const FEATURES_DATA = [
+  {
+    href: '/articles',
+    icon: BookOpen,
+    title: 'Deep-Dive Articles',
+    desc: 'In-depth technical content on modern web development, system design, and best practices.',
+    gradient: 'linear-gradient(135deg, #7c3aed22, #a855f711)',
+    border: '#7c3aed40',
+    accent: '#a855f7',
+  },
+  {
+    href: '/interview',
+    icon: Zap,
+    title: 'Interview Prep',
+    desc: 'Curated Q&As for React, Node.js, DSA, System Design — filter by stack and difficulty.',
+    gradient: 'linear-gradient(135deg, #9333ea22, #c084fc11)',
+    border: '#9333ea40',
+    accent: '#c084fc',
+  },
+  {
+    href: '/tools',
+    icon: Wrench,
+    title: 'Developer Tools',
+    desc: 'A handpicked directory of the best tools to boost your productivity and workflow.',
+    gradient: 'linear-gradient(135deg, #6b21a822, #a855f711)',
+    border: '#6b21a840',
+    accent: '#a855f7',
+  },
+  {
+    href: '/discuss',
+    icon: MessageSquare,
+    title: 'Open Discussions',
+    desc: 'Ask questions, share ideas, and connect with fellow developers in the community.',
+    gradient: 'linear-gradient(135deg, #7c3aed22, #9333ea11)',
+    border: '#7c3aed40',
+    accent: '#9333ea',
+  },
+]
+
+const STACKS_DATA = [
+  { name: 'React', icon: Atom },
+  { name: 'Node.js', icon: Server },
+  { name: 'Next.js', icon: Triangle },
+  { name: 'DSA', icon: Code2 },
+  { name: 'System Design', icon: Network },
+  { name: 'CSS', icon: Palette },
+  { name: 'TypeScript', icon: FileCode },
+  { name: 'MongoDB', icon: Database },
+  { name: 'SQL', icon: Database },
+  { name: 'Docker', icon: Box },
+]
+
+export default function HomePage() {
+  const [stats, setStats] = useState(STATS_INITIAL)
+
+  useEffect(() => {
+    async function fetchStats() {
+      const sb = getSupabase()
+      if (!sb) return
+
+      try {
+        const [
+          { count: articlesCount },
+          { count: toolsCount },
+          { count: interviewCount }
+        ] = await Promise.all([
+          sb.from('articles').select('*', { count: 'exact', head: true }),
+          sb.from('tools').select('*', { count: 'exact', head: true }),
+          sb.from('interview_questions').select('*', { count: 'exact', head: true })
+        ])
+
+        setStats([
+          { label: 'Articles',   value: articlesCount ? `${articlesCount}+` : '10+',  icon: FileText },
+          { label: 'Dev Tools',  value: toolsCount ? `${toolsCount}+` : '15+',     icon: Wrench },
+          { label: 'Q&As',       value: interviewCount ? `${interviewCount}+` : '50+', icon: Zap },
+          { label: 'Community',  value: '100+',  icon: Users },
+        ])
+      } catch (err) {
+        console.warn('Stats fetch error:', err)
+      }
+    }
+    fetchStats()
+  }, [])
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.js file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+    <div style={{ position: 'relative', overflow: 'hidden' }}>
+      {/* ── HERO & STATS ────────────────────────────────────────── */}
+      <Hero>
+        <StatsRow stats={stats} />
+      </Hero>
+
+      {/* ── FEATURES ────────────────────────────────────────────── */}
+      <Features features={FEATURES_DATA} />
+
+      {/* ── STACK CHIPS ──────────────────────────────────────────── */}
+      <StackChips stacks={STACKS_DATA} />
+
+      {/* ── CTA BANNER ───────────────────────────────────────────── */}
+      <CTABanner />
     </div>
-  );
+  )
 }
