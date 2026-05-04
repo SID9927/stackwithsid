@@ -14,9 +14,9 @@ import CTABanner from '@/components/home/CTABanner'
 // ── Data Constants ──────────────────────────────────────────────────
 const STATS_INITIAL = [
   { label: 'Articles',   value: '50+',  icon: FileText },
-  { label: 'Dev Tools',  value: '30+',  icon: Wrench },
+  // { label: 'Dev Tools',  value: '30+',  icon: Wrench },
   { label: 'Q&As',       value: '200+', icon: Zap },
-  { label: 'Community',  value: '1K+',  icon: Users },
+  // { label: 'Community',  value: '1K+',  icon: Users },
 ]
 
 const FEATURES_DATA = [
@@ -92,9 +92,9 @@ export default function HomePage() {
 
         setStats([
           { label: 'Articles',   value: articlesCount ? `${articlesCount}+` : '10+',  icon: FileText },
-          { label: 'Dev Tools',  value: toolsCount ? `${toolsCount}+` : '15+',     icon: Wrench },
+          // { label: 'Dev Tools',  value: toolsCount ? `${toolsCount}+` : '15+',     icon: Wrench },
           { label: 'Q&As',       value: interviewCount ? `${interviewCount}+` : '50+', icon: Zap },
-          { label: 'Community',  value: '100+',  icon: Users },
+          // { label: 'Community',  value: '100+',  icon: Users },
         ])
       } catch (err) {
         console.warn('Stats fetch error:', err)

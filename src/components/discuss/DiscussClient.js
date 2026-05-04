@@ -52,10 +52,45 @@ export default function DiscussClient({ threads }) {
         </RevealOnScroll>
       )}
 
-      {/* Thread list */}
+      {/* Thread list / Coming Soon */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {filtered.length === 0
-          ? <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '60px 0' }}>No discussions yet. Start one!</p>
+          ? (
+            <RevealOnScroll delay={0.2}>
+              <div style={{ 
+                textAlign: 'center', 
+                padding: '100px 20px',
+                background: 'rgba(124, 58, 237, 0.03)',
+                border: '1px dashed var(--border-subtle)',
+                borderRadius: 32,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <div style={{ 
+                  width: 50, height: 50, borderRadius: 14, 
+                  background: 'rgba(124, 58, 237, 0.1)', 
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  marginBottom: 20, color: 'var(--accent)'
+                }}>
+                  <MessageSquare size={24} />
+                </div>
+                <h2 style={{ 
+                  fontFamily: 'Syne, sans-serif',
+                  fontSize: 'clamp(1.5rem, 3vw, 2.2rem)',
+                  fontWeight: 800,
+                  marginBottom: 12,
+                  color: 'var(--text-primary)'
+                }}>
+                  Community Discussions Coming Soon
+                </h2>
+                <p style={{ color: 'var(--text-muted)', maxWidth: 450, fontSize: '1rem', lineHeight: 1.6 }}>
+                  I'm currently building a space for you to connect, share knowledge, and grow together. The community portal will be live very soon!
+                </p>
+              </div>
+            </RevealOnScroll>
+          )
           : filtered.map((thread, i) => (
               <RevealOnScroll key={thread.id} delay={i * 0.05}>
                 <Link href={`/discuss/${thread.id}`} style={{ textDecoration: 'none' }}>

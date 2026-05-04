@@ -5,7 +5,7 @@ import SidebarStats from './sidebar/SidebarStats'
 import SidebarActivity from './sidebar/SidebarActivity'
 import SidebarDiscussion from './sidebar/SidebarDiscussion'
 
-export default function ArticleSidebar({ readTime, commentsCount = 12, likes = 42, dislikes = 2 }) {
+export default function ArticleSidebar({ readTime, commentsCount = 12, likes = 42, isLiked, onLikeToggle, onShare, recentComments = [] }) {
   const scrollRef = useRef(null)
   const [isHinting, setIsHinting] = useState(true)
 
@@ -43,10 +43,12 @@ export default function ArticleSidebar({ readTime, commentsCount = 12, likes = 4
           readTime={readTime} 
           commentsCount={commentsCount} 
           likes={likes} 
-          dislikes={dislikes} 
+          isLiked={isLiked}
+          onLikeToggle={onLikeToggle}
+          onShare={onShare}
         />
         
-        <SidebarActivity />
+        <SidebarActivity recentComments={recentComments} />
         
         <SidebarDiscussion />
       </div>

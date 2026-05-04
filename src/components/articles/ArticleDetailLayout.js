@@ -1,21 +1,177 @@
 'use client'
 
-import { motion } from 'framer-motion'
+import { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { supabase } from '@/lib/supabase'
+import { X, Copy, Check } from 'lucide-react'
+import { FaTwitter, FaLinkedin, FaWhatsapp } from 'react-icons/fa'
 import ArticleSidebar from './ArticleSidebar'
 import ArticleMobileBar from './ArticleMobileBar'
 import ArticleHeader from './ArticleHeader'
 import SidebarDiscussion from './sidebar/SidebarDiscussion'
+import CommentSection from './CommentSection'
 
 export default function ArticleDetailLayout({ 
+  id,
   children, 
   title, 
   tags, 
   publishDate, 
-  readTime,
-  stats = { likes: 42, dislikes: 2, comments: 12 }
+  readTime
 }) {
+  const [stats, setStats] = useState({ likes: 0, comments: 0, isLiked: false, recentComments: [] })
+  const [shareModalOpen, setShareModalOpen] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const [currentUrl, setCurrentUrl] = useState('')
+
+  useEffect(() => {
+    setCurrentUrl(window.location.href)
+  }, [])
+
+  useEffect(() => {
+    if (!id) return
+
+    async function fetchStats() {
+      const { data: session } = await supabase.auth.getSession()
+      const userId = session?.session?.user?.id
+
+      // Fetch like count
+      const { count: likes } = await supabase
+        .from('article_likes')
+        .select('*', { count: 'exact', head: true })
+        .eq('article_id', id)
+
+      // Check if user liked
+      let isLiked = false
+      if (userId) {
+        const { data: userLike } = await supabase
+          .from('article_likes')
+          .select('id')
+          .eq('article_id', id)
+          .eq('user_id', userId)
+          .single()
+        isLiked = !!userLike
+      }
+
+      // Fetch comment count
+      const { count: comments } = await supabase
+        .from('article_comments')
+        .select('*', { count: 'exact', head: true })
+        .eq('article_id', id)
+
+      // Fetch top 2 recent comments
+      const { data: recentComments } = await supabase
+        .from('article_comments')
+        .select(`
+          id,
+          content,
+          user_id,
+          profiles (full_name, avatar_url)
+        `)
+        .eq('article_id', id)
+        .order('created_at', { ascending: false })
+        .limit(2)
+
+      setStats({ 
+        likes: likes || 0, 
+        comments: comments || 0, 
+        isLiked,
+        recentComments: recentComments || []
+      })
+    }
+
+    fetchStats()
+  }, [id])
+
+  const handleLikeToggle = async () => {
+    const { data: session } = await supabase.auth.getSession()
+    if (!session?.session?.user) {
+      alert('Please sign in to like articles.')
+      return
+    }
+
+    const userId = session.session.user.id
+
+    if (stats.isLiked) {
+      // Optimistic Update
+      setStats(prev => ({ ...prev, likes: prev.likes - 1, isLiked: false }))
+      await supabase.from('article_likes').delete().eq('article_id', id).eq('user_id', userId)
+    } else {
+      // Optimistic Update
+      setStats(prev => ({ ...prev, likes: prev.likes + 1, isLiked: true }))
+      await supabase.from('article_likes').insert({ article_id: id, user_id: userId })
+    }
+  }
+
+  const handleShare = async () => {
+    const shareData = {
+      title: title,
+      text: `Check out this article: ${title}`,
+      url: currentUrl,
+    }
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData)
+      } catch (err) {
+        console.error('Error sharing:', err)
+      }
+    } else {
+      setShareModalOpen(true)
+    }
+  }
+
+  const copyToClipboard = async () => {
+    await navigator.clipboard.writeText(currentUrl)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const socialLinks = [
+    { name: 'WhatsApp', icon: <FaWhatsapp size={20} />, color: '#25D366', url: `https://wa.me/?text=${encodeURIComponent(title + ' ' + currentUrl)}` },
+    { name: 'X', icon: <FaTwitter size={20} />, color: '#000000', url: `https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(currentUrl)}` },
+    { name: 'LinkedIn', icon: <FaLinkedin size={20} />, color: '#0077b5', url: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(currentUrl)}` }
+  ]
+
   return (
     <main className="article-detail-page">
+      {/* Share Modal */}
+      <AnimatePresence>
+        {shareModalOpen && (
+          <div className="share-modal-overlay">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="share-modal"
+            >
+              <div className="modal-header">
+                <h3>Share Article</h3>
+                <button onClick={() => setShareModalOpen(false)}><X size={20} /></button>
+              </div>
+              
+              <div className="social-grid">
+                {socialLinks.map(link => (
+                  <a key={link.name} href={link.url} target="_blank" rel="noopener noreferrer" className="social-item">
+                    <div className="icon-wrapper" style={{ background: link.color }}>{link.icon}</div>
+                    <span>{link.name}</span>
+                  </a>
+                ))}
+              </div>
+
+              <div className="copy-section">
+                <p>Article Link</p>
+                <div className="copy-box">
+                  <input type="text" readOnly value={currentUrl} />
+                  <button onClick={copyToClipboard} className={copied ? 'copied' : ''}>
+                    {copied ? <Check size={18} /> : <Copy size={18} />}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
       {/* Background Decorations */}
       <div className="bg-decorations">
         <div className="orb orb-1" />
@@ -37,6 +193,11 @@ export default function ArticleDetailLayout({
               {children}
             </motion.div>
 
+            {/* Comments Section */}
+            <div id="comments" style={{ marginTop: 64 }}>
+              <CommentSection articleId={id} totalCount={stats.comments} />
+            </div>
+
             {/* Mobile-only Discussion CTA (Hidden on Desktop) */}
             <div className="mt-10 lg:hidden px-[4%] mb-[120px]">
               <SidebarDiscussion />
@@ -45,13 +206,27 @@ export default function ArticleDetailLayout({
 
           {/* Sidebar Column (Hidden on Mobile) */}
           <div className="hidden lg:block sticky top-[100px] h-fit">
-            <ArticleSidebar readTime={readTime} likes={stats.likes} dislikes={stats.dislikes} commentsCount={stats.comments} />
+            <ArticleSidebar 
+              readTime={readTime} 
+              likes={stats.likes} 
+              isLiked={stats.isLiked}
+              onLikeToggle={handleLikeToggle}
+              onShare={handleShare}
+              commentsCount={stats.comments} 
+              recentComments={stats.recentComments}
+            />
           </div>
         </div>
       </div>
 
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-100">
-        <ArticleMobileBar likes={stats.likes} commentsCount={stats.comments} />
+        <ArticleMobileBar 
+          likes={stats.likes} 
+          isLiked={stats.isLiked}
+          onLikeToggle={handleLikeToggle}
+          onShare={handleShare}
+          commentsCount={stats.comments} 
+        />
       </div>
 
       <style jsx global>{`
@@ -141,6 +316,99 @@ export default function ArticleDetailLayout({
         .article-content-render ol li { list-style-type: decimal; }
         .article-content-render hr { border: none; border-top: 1px solid var(--border-subtle); margin: 48px 0; }
 
+        /* Tables */
+        .article-content-render table {
+          border-collapse: collapse;
+          width: auto;
+          min-width: min(100%, 600px);
+          margin: 32px 0;
+          border-radius: 12px;
+          overflow: hidden;
+          border: 1px solid var(--border-subtle);
+          background: var(--bg-card);
+        }
+        .article-content-render th {
+          background: rgba(124, 58, 237, 0.15);
+          color: var(--accent-soft);
+          font-weight: 700;
+          font-size: 0.85rem;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          padding: 12px 16px;
+          border: 1px solid var(--border-subtle);
+          text-align: left;
+          white-space: nowrap;
+        }
+        .article-content-render td {
+          padding: 12px 16px;
+          border: 1px solid var(--border-subtle);
+          color: var(--text-secondary);
+          vertical-align: top;
+          transition: background 0.2s;
+          min-width: 120px;
+        }
+        .article-content-render tr:hover td {
+          background: rgba(124, 58, 237, 0.04);
+        }
+
+        /* Support for Tiptap's tableWrapper */
+        .tableWrapper {
+          width: 100%;
+          overflow-x: auto !important;
+          margin: 32px 0;
+          -webkit-overflow-scrolling: touch;
+          display: block !important;
+        }
+
+        .tableWrapper::-webkit-scrollbar, 
+        .article-content-render table::-webkit-scrollbar {
+          height: 6px;
+        }
+        .tableWrapper::-webkit-scrollbar-thumb,
+        .article-content-render table::-webkit-scrollbar-thumb {
+          background: var(--accent-soft);
+          border-radius: 10px;
+        }
+
+        @media (max-width: 1024px) {
+          .article-content-render table {
+            display: block !important;
+            width: 100% !important;
+            overflow-x: auto !important;
+          }
+        }
+
+        /* Callout Cards */
+        .article-content-render .callout {
+          margin: 40px 0;
+          padding: 24px 28px;
+          border-radius: 16px;
+          border: 1px solid var(--border-subtle);
+          background: rgba(255, 255, 255, 0.02);
+        }
+        .article-content-render .callout-success {
+          border-color: rgba(0, 255, 170, 0.25);
+          background: rgba(0, 255, 170, 0.04);
+        }
+        .article-content-render .callout-success strong { color: #00ffaa; }
+        .article-content-render .callout-info {
+          border-color: rgba(59, 130, 246, 0.3);
+          background: rgba(59, 130, 246, 0.05);
+        }
+        .article-content-render .callout-info strong { color: #60a5fa; }
+        .article-content-render .callout-tip {
+          border-color: rgba(245, 158, 11, 0.3);
+          background: rgba(245, 158, 11, 0.05);
+        }
+        .article-content-render .callout-tip strong { color: #fbbf24; }
+        .article-content-render .callout-warning {
+          border-color: rgba(239, 68, 68, 0.3);
+          background: rgba(239, 68, 68, 0.05);
+        }
+        .article-content-render .callout-warning strong { color: #f87171; }
+        .article-content-render .callout p { margin-bottom: 8px; }
+        .article-content-render .callout p:last-child { margin-bottom: 0; }
+
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { 
@@ -177,6 +445,35 @@ export default function ArticleDetailLayout({
             margin-bottom: 120px !important; 
           }
         }
+
+        /* Share Modal Styles */
+        .share-modal-overlay {
+          position: fixed; inset: 0; background: rgba(0,0,0,0.6); 
+          backdrop-filter: blur(8px); z-index: 1000; 
+          display: flex; align-items: center; justify-content: center; padding: 20px;
+        }
+        .share-modal {
+          background: var(--bg-card); border: 1px solid var(--border-subtle); 
+          border-radius: 32px; width: 100%; max-width: 400px; padding: 32px;
+          box-shadow: 0 20px 80px rgba(0,0,0,0.3);
+        }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; }
+        .modal-header h3 { font-family: Syne, sans-serif; font-size: 1.5rem; font-weight: 800; color: var(--text-primary); margin: 0; }
+        .modal-header button { background: none; border: none; color: var(--text-muted); cursor: pointer; transition: color 0.2s; }
+        .modal-header button:hover { color: var(--text-primary); }
+        
+        .social-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 40px; }
+        .social-item { display: flex; flex-direction: column; align-items: center; gap: 10px; text-decoration: none; }
+        .icon-wrapper { width: 56px; height: 56px; border-radius: 18px; display: flex; align-items: center; justify-content: center; color: white; transition: transform 0.2s; }
+        .social-item:hover .icon-wrapper { transform: translateY(-5px); }
+        .social-item span { font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); }
+        
+        .copy-section p { font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; }
+        .copy-box { display: flex; gap: 10px; background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 14px; padding: 6px 6px 6px 16px; align-items: center; }
+        .copy-box input { flex: 1; background: none; border: none; color: var(--text-secondary); font-size: 0.9rem; outline: none; }
+        .copy-box button { width: 40px; height: 40px; border-radius: 10px; background: var(--bg-card); border: 1px solid var(--border-subtle); color: var(--accent); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+        .copy-box button.copied { background: #00ffaa; border-color: #00ffaa; color: #000; }
+        .copy-box button:hover:not(.copied) { border-color: var(--accent); background: var(--border-subtle); }
       `}</style>
     </main>
   )

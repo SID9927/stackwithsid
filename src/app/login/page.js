@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Layers, LogIn, Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react'
@@ -15,6 +15,16 @@ export default function LoginPage() {
   const [loading, setLoading]   = useState(false)
   const [error, setError]       = useState('')
   const [mode, setMode]         = useState('login') // 'login' | 'signup'
+  const [isMounted, setIsMounted] = useState(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        router.push('/')
+      }
+    })
+  }, [router])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -33,11 +43,13 @@ export default function LoginPage() {
       return
     }
 
-    // Redirect admin to /admin, others to /
-    if (data.user?.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL) {
-      router.push('/admin')
-    } else {
+    if (data.user) {
       router.push('/')
+    } else {
+      setLoading(false)
+      if (mode === 'signup') {
+        setError('Verification email sent! Please check your inbox.')
+      }
     }
   }
 

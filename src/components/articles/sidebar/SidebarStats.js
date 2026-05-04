@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion'
 import { Clock, MessageSquare, ThumbsUp, ThumbsDown, Share2, Bookmark } from 'lucide-react'
 
-export default function SidebarStats({ readTime, commentsCount, likes, dislikes }) {
+export default function SidebarStats({ readTime, commentsCount, likes, isLiked, onLikeToggle }) {
   return (
     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4 }}
       style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: '24px', padding: '28px' }}
@@ -24,11 +24,17 @@ export default function SidebarStats({ readTime, commentsCount, likes, dislikes 
         <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '20px' }}>
           <h4 style={{ color: 'var(--text-muted)', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '12px' }}>Engagement</h4>
           <div style={{ display: 'flex', gap: '12px' }}>
-            <button className="sidebar-btn">
-              <ThumbsUp size={16} /> {likes}
+            <button 
+              className={`sidebar-btn ${isLiked ? 'active' : ''}`}
+              onClick={onLikeToggle}
+            >
+              <ThumbsUp size={16} fill={isLiked ? 'currentColor' : 'none'} /> {likes}
             </button>
-            <button className="sidebar-btn">
-              <ThumbsDown size={16} /> {dislikes}
+            <button className="sidebar-btn" onClick={() => {
+              const el = document.getElementById('comments');
+              el?.scrollIntoView({ behavior: 'smooth' });
+            }}>
+              <MessageSquare size={16} /> Discuss
             </button>
           </div>
         </div>

@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { Search, Clock, ArrowRight, Tag } from 'lucide-react'
+import { Search, Clock, ArrowRight, Tag, ChevronLeft, ChevronRight } from 'lucide-react'
 import RevealOnScroll from '@/components/animations/RevealOnScroll'
 import TiltCard from '@/components/animations/TiltCard'
 import { formatDate, truncate } from '@/lib/utils'
@@ -11,16 +11,34 @@ import { formatDate, truncate } from '@/lib/utils'
 export default function ArticleListClient({ initialArticles }) {
   const [query, setQuery] = useState('')
   const [activeTag, setActiveTag] = useState('All')
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 6
 
   const allTags = ['All', ...new Set(
     initialArticles.flatMap(a => (a.tags || []))
   )]
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [query, activeTag])
 
   const filtered = initialArticles.filter(a => {
     const matchesQuery = !query || a.title?.toLowerCase().includes(query.toLowerCase())
     const matchesTag   = activeTag === 'All' || (a.tags || []).includes(activeTag)
     return matchesQuery && matchesTag
   })
+
+  const totalPages = Math.ceil(filtered.length / itemsPerPage)
+  const paginatedArticles = filtered.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  )
+
+  const handlePageChange = (newPage) => {
+    setCurrentPage(newPage)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   return (
     <div style={{ maxWidth: 1500, margin: '0 auto', padding: '60px 5%' }}>
@@ -106,52 +124,129 @@ export default function ArticleListClient({ initialArticles }) {
           No articles found.
         </div>
       ) : (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-          gap: 24,
-        }}>
-          {filtered.map((article, i) => (
-            <RevealOnScroll key={article.id} delay={i * 0.06}>
-              <TiltCard>
-                <Link href={`/articles/${article.slug}`} style={{ textDecoration: 'none', display: 'block', height: '100%' }}>
-                  <div className="glass-card" style={{ padding: 28, height: '100%' }}>
-                    {/* Tags */}
-                    {article.tags?.length > 0 && (
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
-                        {article.tags.slice(0, 2).map(t => (
-                          <span key={t} className="badge badge-purple" style={{ fontSize: '0.7rem' }}>
-                            {t}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                    <h2 style={{ fontSize: '1.1rem', marginBottom: 10, lineHeight: 1.4 }}>{article.title}</h2>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', lineHeight: 1.6, marginBottom: 20 }}>
-                      {truncate(article.excerpt || '', 110)}
-                    </p>
-                    <div style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      color: 'var(--text-muted)', fontSize: '0.78rem',
+        <>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+            gap: 24,
+          }}>
+            {paginatedArticles.map((article, i) => (
+              <RevealOnScroll key={article.id} delay={i * 0.06}>
+                <TiltCard style={{ height: '100%' }}>
+                  <Link href={`/articles/${article.slug}`} style={{ textDecoration: 'none', display: 'block', height: '100%' }}>
+                    <div className="glass-card" style={{ 
+                      padding: 28, 
+                      height: '100%', 
+                      display: 'flex', 
+                      flexDirection: 'column' 
                     }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <Clock size={12} />
-                        {article.read_time || '5 min read'}
+                      {/* Tags */}
+                      {article.tags?.length > 0 && (
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
+                          {article.tags.slice(0, 2).map(t => (
+                            <span key={t} className="badge badge-purple" style={{ fontSize: '0.7rem' }}>
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      <h2 style={{ fontSize: '1.1rem', marginBottom: 10, lineHeight: 1.4 }}>{article.title}</h2>
+                      <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', lineHeight: 1.6, marginBottom: 20 }}>
+                        {truncate(article.excerpt || '', 110)}
+                      </p>
+                      
+                      {/* Footer pushed to bottom */}
+                      <div style={{ marginTop: 'auto' }}>
+                        <div style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          color: 'var(--text-muted)', fontSize: '0.78rem',
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <Clock size={12} />
+                            {article.read_time || '5 min read'}
+                          </div>
+                          <span>{formatDate(article.created_at)}</span>
+                        </div>
+                        <div style={{
+                          display: 'flex', alignItems: 'center', gap: 6, marginTop: 16,
+                          color: 'var(--accent)', fontSize: '0.85rem', fontWeight: 600,
+                        }}>
+                          Read more <ArrowRight size={14} />
+                        </div>
                       </div>
-                      <span>{formatDate(article.created_at)}</span>
                     </div>
-                    <div style={{
-                      display: 'flex', alignItems: 'center', gap: 6, marginTop: 16,
-                      color: 'var(--accent)', fontSize: '0.85rem', fontWeight: 600,
-                    }}>
-                      Read more <ArrowRight size={14} />
-                    </div>
-                  </div>
-                </Link>
-              </TiltCard>
-            </RevealOnScroll>
-          ))}
-        </div>
+                  </Link>
+                </TiltCard>
+              </RevealOnScroll>
+            ))}
+          </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              alignItems: 'center', 
+              gap: 12, 
+              marginTop: 64 
+            }}>
+              <button 
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="pagination-btn"
+                style={{
+                  width: 44, height: 44, borderRadius: 12,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: 'var(--bg-card)', border: '1px solid var(--border-mid)',
+                  color: currentPage === 1 ? 'var(--text-muted)' : 'var(--text-primary)',
+                  cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                  opacity: currentPage === 1 ? 0.5 : 1,
+                  transition: 'all 0.2s'
+                }}
+              >
+                <ChevronLeft size={18} />
+              </button>
+
+              <div style={{ display: 'flex', gap: 8 }}>
+                {[...Array(totalPages)].map((_, i) => (
+                  <button
+                    key={i + 1}
+                    onClick={() => handlePageChange(i + 1)}
+                    style={{
+                      width: 44, height: 44, borderRadius: 12,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      background: currentPage === i + 1 ? 'var(--accent)' : 'var(--bg-card)',
+                      border: `1px solid ${currentPage === i + 1 ? 'var(--accent)' : 'var(--border-mid)'}`,
+                      color: currentPage === i + 1 ? 'white' : 'var(--text-primary)',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+              </div>
+
+              <button 
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="pagination-btn"
+                style={{
+                  width: 44, height: 44, borderRadius: 12,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: 'var(--bg-card)', border: '1px solid var(--border-mid)',
+                  color: currentPage === totalPages ? 'var(--text-muted)' : 'var(--text-primary)',
+                  cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                  opacity: currentPage === totalPages ? 0.5 : 1,
+                  transition: 'all 0.2s'
+                }}
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   )

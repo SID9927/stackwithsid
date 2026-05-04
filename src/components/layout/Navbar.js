@@ -2,16 +2,17 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Menu, X, Sun, Moon, Layers, BookOpen, MessageSquare, Wrench, PlayCircle, LogIn, Zap, ChevronRight, Mail } from 'lucide-react'
 import { useTheme } from '@/lib/ThemeProvider'
+import { supabase } from '@/lib/supabase'
 
 const NAV_LINKS = [
   { href: '/articles',  label: 'Articles',  icon: BookOpen },
   { href: '/interview', label: 'Interview',  icon: Zap },
-  { href: '/tools',     label: 'Tools',      icon: Wrench },
-  { href: '/discuss',   label: 'Discuss',    icon: MessageSquare },
+  // { href: '/tools',     label: 'Tools',      icon: Wrench },
+  // { href: '/discuss',   label: 'Discuss',    icon: MessageSquare },
   { href: '/videos',    label: 'Videos',     icon: PlayCircle },
   { href: '/contact',   label: 'Contact',    icon: Mail },
 ]
@@ -98,7 +99,7 @@ function BalloonToggle({ theme, toggleTheme, mounted }) {
 }
 
 /* ── Mobile Drawer ─────────────────────────────────────────────────── */
-function MobileDrawer({ open, onClose, pathname }) {
+function MobileDrawer({ open, onClose, pathname, user, handleSignOut }) {
   return (
     <AnimatePresence>
       {open && (
@@ -158,13 +159,31 @@ function MobileDrawer({ open, onClose, pathname }) {
                 </motion.div>
               )
             })}
+            {user?.email === '5065sid@gmail.com' && (
+              <Link href="/admin" onClick={onClose} style={{ textDecoration: 'none' }}>
+                <motion.div className="mobile-nav-item" style={{ color: 'var(--accent)' }}>
+                  <Layers size={20} />
+                  <span>Admin Portal</span>
+                </motion.div>
+              </Link>
+            )}
             <div style={{ flex: 1 }} />
-            <Link href="/login" onClick={onClose} style={{ textDecoration: 'none' }}>
-              <div className="btn-primary" style={{ width: '100%', borderRadius: 16, height: 56 }}>
-                <LogIn size={20} />
-                <span>Sign In</span>
-              </div>
-            </Link>
+            {user ? (
+              <button 
+                onClick={handleSignOut}
+                className="btn-ghost" 
+                style={{ width: '100%', borderRadius: 16, height: 56, justifyContent: 'center' }}
+              >
+                Sign Out
+              </button>
+            ) : (
+              <Link href="/login" onClick={onClose} style={{ textDecoration: 'none' }}>
+                <div className="btn-primary" style={{ width: '100%', borderRadius: 16, height: 56 }}>
+                  <LogIn size={20} />
+                  <span>Sign In</span>
+                </div>
+              </Link>
+            )}
           </motion.div>
         </>
       )}
@@ -175,14 +194,24 @@ function MobileDrawer({ open, onClose, pathname }) {
 /* ── Navbar ────────────────────────────────────────────────────────── */
 export default function Navbar() {
   const pathname = usePathname()
+  const router = useRouter()
   const { theme, toggleTheme, mounted } = useTheme()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [scrolled, setScrolled] = useState(false)
-
-  if (pathname?.startsWith('/admin')) return null
+  const [user, setUser] = useState(null)
 
   useEffect(() => {
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null)
+    })
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+    })
+
     const handleScroll = () => setScrolled(window.scrollY > 20)
     const handleResize = () => setIsMobile(window.innerWidth < 768)
     
@@ -194,8 +223,14 @@ export default function Navbar() {
     return () => {
       window.removeEventListener('scroll', handleScroll)
       window.removeEventListener('resize', handleResize)
+      subscription.unsubscribe()
     }
   }, [])
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    router.push('/')
+  }
 
   return (
     <>
@@ -294,6 +329,23 @@ export default function Navbar() {
                 </Link>
               )
             })}
+            {user?.email === '5065sid@gmail.com' && (
+              <Link href="/admin" style={{ textDecoration: 'none' }}>
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  style={{
+                    padding: '10px 18px',
+                    borderRadius: 14,
+                    fontSize: '0.9rem',
+                    fontWeight: 600,
+                    color: 'var(--accent)',
+                  }}
+                >
+                  Admin
+                </motion.div>
+              </Link>
+            )}
           </nav>
 
           {/* Actions */}
@@ -301,17 +353,37 @@ export default function Navbar() {
             <BalloonToggle theme={theme} toggleTheme={toggleTheme} mounted={mounted} />
             
             <div className="hidden lg:block">
-              <Link href="/login" style={{ textDecoration: 'none' }}>
-                <motion.div
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="btn-primary"
-                  style={{ padding: '0 20px', height: 42, borderRadius: 12, fontSize: '0.85rem' }}
-                >
-                  <LogIn size={16} />
-                  <span>Sign In</span>
-                </motion.div>
-              </Link>
+              {user ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ 
+                    fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)',
+                    maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                  }}>
+                    {user.email.split('@')[0]}
+                  </div>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={handleSignOut}
+                    className="btn-ghost"
+                    style={{ height: 42, padding: '0 16px', borderRadius: 12, fontSize: '0.8rem' }}
+                  >
+                    Sign Out
+                  </motion.button>
+                </div>
+              ) : (
+                <Link href="/login" style={{ textDecoration: 'none' }}>
+                  <motion.div
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="btn-primary"
+                    style={{ padding: '0 20px', height: 42, borderRadius: 12, fontSize: '0.85rem' }}
+                  >
+                    <LogIn size={16} />
+                    <span>Sign In</span>
+                  </motion.div>
+                </Link>
+              )}
             </div>
 
             <button
@@ -330,7 +402,13 @@ export default function Navbar() {
         </motion.div>
       </header>
 
-      <MobileDrawer open={mobileOpen} onClose={() => setMobileOpen(false)} pathname={pathname} />
+      <MobileDrawer 
+        open={mobileOpen} 
+        onClose={() => setMobileOpen(false)} 
+        pathname={pathname} 
+        user={user}
+        handleSignOut={handleSignOut}
+      />
     </>
   )
 }

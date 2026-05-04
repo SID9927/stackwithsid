@@ -3,7 +3,12 @@
 import { motion } from 'framer-motion'
 import { ThumbsUp, MessageSquare, Share2, Bookmark } from 'lucide-react'
 
-export default function ArticleMobileBar({ likes = 42, commentsCount = 12 }) {
+export default function ArticleMobileBar({ likes = 0, isLiked, onLikeToggle, onShare, commentsCount = 0 }) {
+  const scrollToComments = () => {
+    const el = document.getElementById('comments');
+    el?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   return (
     <motion.div 
       initial={{ y: 100 }}
@@ -17,16 +22,19 @@ export default function ArticleMobileBar({ likes = 42, commentsCount = 12 }) {
         backdropFilter: 'blur(16px)', borderTop: '1px solid var(--border-subtle)',
         borderRadius: '24px 24px 0 0', boxShadow: '0 -10px 30px rgba(0,0,0,0.5)'
       }}>
-        <div style={{ display: 'flex', gap: '16px' }}>
-          <button className="mobile-btn">
-            <ThumbsUp size={20} color="var(--accent)" /> {likes}
+        <div style={{ display: 'flex', gap: '20px' }}>
+          <button 
+            className={`mobile-btn ${isLiked ? 'active' : ''}`}
+            onClick={onLikeToggle}
+          >
+            <ThumbsUp size={20} fill={isLiked ? 'var(--accent)' : 'none'} color="var(--accent)" /> {likes}
           </button>
-          <button className="mobile-btn">
+          <button className="mobile-btn" onClick={scrollToComments}>
             <MessageSquare size={20} color="var(--accent)" /> {commentsCount}
           </button>
         </div>
         <div style={{ display: 'flex', gap: '16px' }}>
-          <button className="mobile-btn icon"><Share2 size={20} /></button>
+          <button className="mobile-btn icon" onClick={onShare}><Share2 size={20} /></button>
           <button className="mobile-btn icon"><Bookmark size={20} /></button>
         </div>
       </div>

@@ -130,6 +130,71 @@ export default function InterviewDetailView({ q }) {
         .explanation-text { color: var(--text-secondary); line-height: 1.8; font-size: 1.1rem; }
         .explanation-text p { margin-bottom: 24px; }
         .explanation-text strong { color: var(--text-primary); font-weight: 700; }
+        .explanation-text ul, .explanation-text ol { padding-left: 28px; margin-bottom: 24px; }
+        .explanation-text li { margin-bottom: 8px; line-height: 1.7; }
+        .explanation-text ul li { list-style-type: disc; }
+        .explanation-text ol li { list-style-type: decimal; }
+
+        /* Tables */
+        .explanation-text table {
+          border-collapse: collapse; width: 100%; margin: 32px 0;
+          border-radius: 12px; overflow-x: auto !important; display: block !important;
+          border: 1px solid var(--border-subtle); -webkit-overflow-scrolling: touch;
+        }
+        .explanation-text th {
+          background: rgba(124, 58, 237, 0.15); color: var(--accent-soft);
+          font-weight: 700; font-size: 0.85rem; text-transform: uppercase;
+          letter-spacing: 0.05em; padding: 12px 16px; border: 1px solid var(--border-subtle); text-align: left;
+          white-space: nowrap;
+        }
+        .explanation-text td {
+          padding: 12px 16px; border: 1px solid var(--border-subtle);
+          color: var(--text-secondary); vertical-align: top; transition: background 0.2s;
+          min-width: 120px;
+        }
+        .explanation-text tr:hover td { background: rgba(124, 58, 237, 0.04); }
+        
+        .tableWrapper {
+          width: 100%;
+          overflow-x: auto !important;
+          margin: 32px 0;
+          -webkit-overflow-scrolling: touch;
+          display: block !important;
+        }
+
+        .tableWrapper::-webkit-scrollbar,
+        .explanation-text table::-webkit-scrollbar {
+          height: 6px;
+        }
+        .tableWrapper::-webkit-scrollbar-thumb,
+        .explanation-text table::-webkit-scrollbar-thumb {
+          background: var(--accent-soft);
+          border-radius: 10px;
+        }
+
+        @media (max-width: 1024px) {
+          .explanation-text table {
+            display: block !important;
+            width: 100% !important;
+            overflow-x: auto !important;
+          }
+        }
+
+        /* Callout Cards */
+        .explanation-text .callout {
+          margin: 40px 0; padding: 24px 28px; border-radius: 16px;
+          border: 1px solid var(--border-subtle); background: rgba(255, 255, 255, 0.02);
+        }
+        .explanation-text .callout-success { border-color: rgba(0, 255, 170, 0.25); background: rgba(0, 255, 170, 0.04); }
+        .explanation-text .callout-success strong { color: #00ffaa !important; }
+        .explanation-text .callout-info { border-color: rgba(59, 130, 246, 0.3); background: rgba(59, 130, 246, 0.05); }
+        .explanation-text .callout-info strong { color: #60a5fa !important; }
+        .explanation-text .callout-tip { border-color: rgba(245, 158, 11, 0.3); background: rgba(245, 158, 11, 0.05); }
+        .explanation-text .callout-tip strong { color: #fbbf24 !important; }
+        .explanation-text .callout-warning { border-color: rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.05); }
+        .explanation-text .callout-warning strong { color: #f87171 !important; }
+        .explanation-text .callout p { margin-bottom: 8px; }
+        .explanation-text .callout p:last-child { margin-bottom: 0; }
 
         .hiring-insight {
           background: rgba(124, 58, 237, 0.03); border-left: 4px solid var(--accent); padding: 24px 32px; border-radius: 0 16px 16px 0; margin: 48px 0; color: var(--text-secondary); font-style: italic; line-height: 1.6;

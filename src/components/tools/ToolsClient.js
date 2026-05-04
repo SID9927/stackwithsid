@@ -60,12 +60,54 @@ export default function ToolsClient({ tools }) {
         </div>
       </RevealOnScroll>
 
+      {/* Coming Soon Headline */}
+      <RevealOnScroll delay={0.2}>
+        <div style={{ 
+          textAlign: 'center', 
+          padding: '80px 20px',
+          background: 'rgba(124, 58, 237, 0.03)',
+          border: '1px dashed var(--border-subtle)',
+          borderRadius: 32,
+          marginBottom: 48,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <div style={{ 
+            width: 50, height: 50, borderRadius: 14, 
+            background: 'rgba(124, 58, 237, 0.1)', 
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            marginBottom: 20, color: 'var(--accent)'
+          }}>
+            <Search size={24} />
+          </div>
+          <h2 style={{ 
+            fontFamily: 'Syne, sans-serif',
+            fontSize: 'clamp(1.5rem, 3vw, 2.2rem)',
+            fontWeight: 800,
+            marginBottom: 12,
+            color: 'var(--text-primary)'
+          }}>
+            More Tools Coming Soon
+          </h2>
+          <p style={{ color: 'var(--text-muted)', maxWidth: 450, fontSize: '1rem', lineHeight: 1.6 }}>
+            I'm currently handpicking and testing the best developer resources to boost your productivity. Stay tuned for the next batch!
+          </p>
+        </div>
+      </RevealOnScroll>
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 20 }}>
         {filtered.map((tool, i) => (
           <RevealOnScroll key={tool.id} delay={i * 0.05}>
-            <TiltCard>
-              <a href={tool.url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
-                <div className="glass-card" style={{ padding: 24, height: '100%' }}>
+            <TiltCard style={{ height: '100%' }}>
+              <a href={tool.url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', display: 'block', height: '100%' }}>
+                <div className="glass-card" style={{ 
+                  padding: 24, 
+                  height: '100%', 
+                  display: 'flex', 
+                  flexDirection: 'column' 
+                }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
                     <div>
                       <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 4 }}>{tool.name}</h3>

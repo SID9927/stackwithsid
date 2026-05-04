@@ -10,9 +10,13 @@ import { useTheme } from '@/lib/ThemeProvider'
 export default function NotFound() {
   const { theme, toggleTheme, mounted } = useTheme()
   const [isMounted, setIsMounted] = useState(false)
+  const [particleCount, setParticleCount] = useState(12000)
 
   useEffect(() => {
     setIsMounted(true)
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setParticleCount(4000)
+    }
   }, [])
   return (
     <div className="not-found-page">
@@ -59,7 +63,7 @@ export default function NotFound() {
 
       {/* Hero Swarm Animation */}
       <div className="bg-decorations">
-        <InteractiveSwarm count={12000} />
+        {isMounted && <InteractiveSwarm count={particleCount} />}
       </div>
 
       <div className="content-wrapper">
@@ -114,25 +118,29 @@ export default function NotFound() {
           inset: 0;
           z-index: 0;
           overflow: hidden;
-          /* InteractiveSwarm manages its own pointer events */
         }
 
         .theme-toggle-btn {
           position: absolute;
-          top: 32px;
-          right: 32px;
-          width: 48px;
-          height: 48px;    
+          top: 24px;
+          right: 24px;
+          width: 44px;
+          height: 44px;    
           display: flex;
           align-items: center;
           justify-content: center;
           cursor: pointer;
           z-index: 50;
           transition: all 0.2s ease;
+          background: var(--bg-card);
+          border: 1px solid var(--border-subtle);
+          border-radius: 12px;
+          backdrop-filter: blur(8px);
         }
 
         .theme-toggle-btn:hover {
           transform: scale(1.05); 
+          background: var(--bg-elevated);
         }
 
         .content-wrapper {
@@ -140,7 +148,7 @@ export default function NotFound() {
           z-index: 10;
           width: 100%;
           max-width: 800px;
-          pointer-events: none; /* Let clicks pass through to the swarm where possible */
+          pointer-events: none;
         }
 
         .error-container {
@@ -148,21 +156,21 @@ export default function NotFound() {
           flex-direction: column;
           align-items: center;
           text-align: center;
-          padding: 60px 20px;
-          pointer-events: auto; /* Enable clicks on the text/buttons */
+          padding: 40px 20px;
+          pointer-events: auto;
         }
 
         .error-code {
           font-family: Syne, sans-serif;
-          font-size: clamp(8rem, 20vw, 15rem);
+          font-size: clamp(6rem, 25vw, 15rem);
           font-weight: 800;
-          line-height: 1;
+          line-height: 0.9;
           background: var(--gradient-purple);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
-          margin-bottom: 24px;
-          letter-spacing: -0.04em;
-          text-shadow: 0 10px 40px rgba(124, 58, 237, 0.2);
+          margin-bottom: 16px;
+          letter-spacing: -0.05em;
+          filter: drop-shadow(0 10px 40px rgba(124, 58, 237, 0.2));
         }
 
         .terminal-badge {
@@ -170,39 +178,38 @@ export default function NotFound() {
           align-items: center;
           width: fit-content;
           gap: 8px;
-          background: var(--bg-card);
-          padding: 8px 16px;
+          background: rgba(124, 58, 237, 0.08);
+          padding: 6px 14px;
           border-radius: 999px;
           font-family: var(--font-mono);
-          font-size: 0.85rem;
-          color: var(--accent);
-          border: 1px solid var(--border-subtle);
-          margin-bottom: 32px;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+          font-size: 0.75rem;
+          color: var(--accent-soft);
+          border: 1px solid rgba(124, 58, 237, 0.2);
+          margin-bottom: 24px;
         }
 
         .error-title {
           font-family: Syne, sans-serif;
-          font-size: clamp(2.5rem, 5vw, 4rem);
+          font-size: clamp(1.8rem, 6vw, 3.5rem);
           font-weight: 800;
           color: var(--text-primary);
-          margin-bottom: 16px;
+          margin-bottom: 12px;
           line-height: 1.1;
           letter-spacing: -0.03em;
         }
 
         .error-desc {
-          font-size: 1.25rem;
+          font-size: clamp(1rem, 3vw, 1.25rem);
           color: var(--text-secondary);
           line-height: 1.6;
-          margin-bottom: 48px;
-          max-width: 600px;
+          margin-bottom: 40px;
+          max-width: 500px;
         }
 
         .action-buttons {
           display: flex;
           align-items: center;
-          gap: 16px;
+          gap: 12px;
           flex-wrap: wrap;
           justify-content: center;
         }
@@ -212,54 +219,64 @@ export default function NotFound() {
           align-items: center;
           gap: 10px;
           background: var(--accent);
-          color: #fff;
-          padding: 16px 32px;
-          border-radius: 999px;
-          font-weight: 600;
-          font-size: 1.05rem;
+          color: #fff !important;
+          padding: 14px 28px;
+          border-radius: 12px;
+          font-weight: 700;
+          font-size: 0.95rem;
           text-decoration: none;
-          transition: all 0.2s ease;
+          transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
           border: none;
           cursor: pointer;
+          box-shadow: 0 8px 20px rgba(124, 58, 237, 0.25);
         }
 
         .btn-primary:hover {
           background: var(--accent-hover);
           transform: translateY(-2px);
-          box-shadow: 0 10px 25px rgba(124, 58, 237, 0.4);
+          box-shadow: 0 12px 30px rgba(124, 58, 237, 0.35);
         }
 
         .btn-ghost {
           display: flex;
           align-items: center;
           gap: 10px;
-          background: rgba(255, 255, 255, 0.03);
+          background: var(--bg-card);
           backdrop-filter: blur(10px);
           color: var(--text-primary);
-          padding: 16px 32px;
-          border-radius: 999px;
+          padding: 14px 28px;
+          border-radius: 12px;
           font-weight: 600;
-          font-size: 1.05rem;
+          font-size: 0.95rem;
           text-decoration: none;
-          transition: all 0.2s ease;
-          border: 1px solid var(--border-mid);
+          transition: all 0.3s ease;
+          border: 1px solid var(--border-subtle);
           cursor: pointer;
         }
 
         .btn-ghost:hover {
           background: var(--bg-elevated);
-          border-color: var(--text-muted);
+          border-color: var(--accent-soft);
+          color: var(--accent);
         }
 
         @media (max-width: 640px) {
+          .error-container { padding: 20px 10px; }
+          .error-code { margin-bottom: 12px; }
+          .error-title { margin-bottom: 16px; }
+          .error-desc { margin-bottom: 32px; }
+          
           .action-buttons {
-            flex-direction: column;
+            flex-direction: column-reverse;
             width: 100%;
+            max-width: 280px;
           }
           .btn-primary, .btn-ghost {
             width: 100%;
             justify-content: center;
+            height: 52px;
           }
+          .theme-toggle-btn { top: 16px; right: 16px; }
         }
       `}</style>
     </div>

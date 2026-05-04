@@ -43,6 +43,7 @@ export default async function ArticlePage({ params }) {
 
   return (
     <ArticleDetailLayout
+      id={article.id}
       title={article.title}
       tags={article.tags || []}
       publishDate={publishDate}

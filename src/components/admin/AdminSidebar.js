@@ -13,6 +13,7 @@ import {
   ChevronRight,
   PanelLeftClose,
   PanelLeftOpen,
+  Globe,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
@@ -39,6 +40,7 @@ export default function AdminSidebar({ isCollapsed, setIsCollapsed, zIndex = 100
       icon: <MessageSquare size={22} />,
     },
     { name: "Settings", path: "/admin/settings", icon: <Settings size={22} /> },
+    { name: "View Site", path: "/", icon: <Globe size={22} /> },
   ];
 
   const handleSignOut = async () => {
