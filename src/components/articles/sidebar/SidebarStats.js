@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion'
 import { Clock, MessageSquare, ThumbsUp, ThumbsDown, Share2, Bookmark } from 'lucide-react'
 
-export default function SidebarStats({ readTime, commentsCount, likes, isLiked, onLikeToggle }) {
+export default function SidebarStats({ readTime, commentsCount, likes, isLiked, onLikeToggle, onShare, isBookmarked, onBookmarkToggle }) {
   return (
     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4 }}
       style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: '24px', padding: '28px' }}
@@ -40,11 +40,15 @@ export default function SidebarStats({ readTime, commentsCount, likes, isLiked, 
         </div>
 
         <div style={{ display: 'flex', gap: '10px' }}>
-          <button className="sidebar-action-btn primary">
+          <button className="sidebar-action-btn primary" onClick={onShare}>
             <Share2 size={16} /> Share
           </button>
-          <button className="sidebar-action-btn icon">
-            <Bookmark size={16} />
+          <button 
+            className={`sidebar-action-btn icon ${isBookmarked ? 'active' : ''}`} 
+            onClick={onBookmarkToggle}
+            title={isBookmarked ? 'Remove Bookmark' : 'Save Article'}
+          >
+            <Bookmark size={16} fill={isBookmarked ? 'var(--accent)' : 'none'} color={isBookmarked ? 'var(--accent)' : 'currentColor'} />
           </button>
         </div>
       </div>
@@ -67,6 +71,10 @@ export default function SidebarStats({ readTime, commentsCount, likes, isLiked, 
         }
         .sidebar-action-btn.icon {
           width: 42px; background: var(--bg-elevated); border: 1px solid var(--border-subtle); color: var(--text-primary);
+        }
+        .sidebar-action-btn.icon.active {
+          border-color: var(--accent);
+          background: rgba(124, 58, 237, 0.1);
         }
         .sidebar-action-btn:hover { transform: translateY(-2px); filter: brightness(1.1); }
       `}</style>

@@ -169,13 +169,28 @@ function MobileDrawer({ open, onClose, pathname, user, handleSignOut }) {
             )}
             <div style={{ flex: 1 }} />
             {user ? (
-              <button 
-                onClick={handleSignOut}
-                className="btn-ghost" 
-                style={{ width: '100%', borderRadius: 16, height: 56, justifyContent: 'center' }}
-              >
-                Sign Out
-              </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 'auto' }}>
+                <Link href="/profile/settings" onClick={onClose} style={{ textDecoration: 'none' }}>
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 14,
+                    padding: '16px 20px',
+                    borderRadius: 16,
+                    background: 'var(--bg-secondary)',
+                    border: '1px solid var(--border-subtle)',
+                    color: 'var(--text-primary)',
+                  }}>
+                    <Zap size={20} color="var(--accent)" />
+                    <span style={{ fontWeight: 600, flex: 1 }}>My Profile</span>
+                  </div>
+                </Link>
+                <button 
+                  onClick={handleSignOut}
+                  className="btn-ghost" 
+                  style={{ width: '100%', borderRadius: 16, height: 56, justifyContent: 'center' }}
+                >
+                  Sign Out
+                </button>
+              </div>
             ) : (
               <Link href="/login" onClick={onClose} style={{ textDecoration: 'none' }}>
                 <div className="btn-primary" style={{ width: '100%', borderRadius: 16, height: 56 }}>
@@ -355,20 +370,44 @@ export default function Navbar() {
             <div className="hidden lg:block">
               {user ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ 
-                    fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)',
-                    maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
-                  }}>
-                    {user.email.split('@')[0]}
-                  </div>
+                  <Link href="/profile/settings" style={{ textDecoration: 'none' }}>
+                    <motion.div
+                      whileHover={{ scale: 1.05, y: -2 }}
+                      whileTap={{ scale: 0.95 }}
+                      style={{ 
+                        padding: '8px 16px',
+                        borderRadius: 12,
+                        background: 'var(--bg-elevated)',
+                        border: '1px solid var(--border-subtle)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      <div style={{ 
+                        width: 24, height: 24, borderRadius: '50%', 
+                        background: 'var(--gradient-purple)', 
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '0.7rem', color: 'white', fontWeight: 800
+                      }}>
+                        {user.email[0].toUpperCase()}
+                      </div>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                        {user.email.split('@')[0]}
+                      </span>
+                    </motion.div>
+                  </Link>
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={handleSignOut}
                     className="btn-ghost"
-                    style={{ height: 42, padding: '0 16px', borderRadius: 12, fontSize: '0.8rem' }}
+                    style={{ height: 42, width: 42, padding: 0, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    title="Sign Out"
                   >
-                    Sign Out
+                    <LogIn size={18} style={{ transform: 'rotate(180deg)' }} />
                   </motion.button>
                 </div>
               ) : (

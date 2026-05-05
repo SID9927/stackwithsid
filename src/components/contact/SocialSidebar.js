@@ -3,8 +3,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { SiYoutube, SiGithub } from 'react-icons/si'
-import { FaTwitter } from 'react-icons/fa'
-import { IoChatbubbleEllipsesOutline, IoArrowForward, IoGlobeOutline } from 'react-icons/io5'
+import { IoChatbubbleEllipsesOutline, IoArrowForward, IoGlobeOutline, IoMailOutline } from 'react-icons/io5'
 import RevealOnScroll from '@/components/animations/RevealOnScroll'
 import TiltCard from '@/components/animations/TiltCard'
 
@@ -20,7 +19,7 @@ export default function SocialSidebar() {
 
   const socialLinks = [
     { name: 'YouTube', icon: SiYoutube, href: 'https://youtube.com/@stackwithsid', color: '#ff0000', handle: '@stackwithsid' },
-    { name: 'Twitter', icon: FaTwitter, href: 'https://twitter.com/stackwithsid', color: '#1da1f2', handle: '@stackwithsid' },
+    { name: 'Email', icon: IoMailOutline, href: 'mailto:hello@dsiddharth.in', color: '#ff7d00', handle: 'hello@dsiddharth.in' },
     { name: 'GitHub', icon: SiGithub, href: 'https://github.com/stackwithsid', color: '#333', handle: 'stackwithsid' },
     { name: 'Portfolio', icon: IoGlobeOutline, href: 'https://dsiddharth.in', color: '#7c3aed', handle: 'dsiddharth.in' },
   ]

@@ -168,20 +168,26 @@ export default function RichTextEditor({ value, onChange }) {
   const [showLHMenu, setShowLHMenu] = useState(false)
   const [showFSMenu, setShowFSMenu] = useState(false)
   const [fontSize, setFontSize] = useState('16px')
+  const [showAlignMenu, setShowAlignMenu] = useState(false)
+  const [showListMenu, setShowListMenu] = useState(false)
+  const [showHeadingMenu, setShowHeadingMenu] = useState(false)
+  const [showInlineMenu, setShowInlineMenu] = useState(false)
   const [selectedText, setSelectedText] = useState('')
 
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
+        history: true,
         heading: { levels: [2, 3] },
         codeBlock: { HTMLAttributes: { class: 'article-code-block' } },
         blockquote: { HTMLAttributes: { class: 'article-blockquote' } },
+        link: false,
       }),
       Placeholder.configure({
         placeholder: 'Start writing your article...',
       }),
       TextAlign.configure({
-        types: ['heading', 'paragraph'],
+        types: ['heading', 'paragraph', 'table'],
       }),
       Table.configure({ resizable: true }),
       TableRow,
@@ -246,52 +252,129 @@ export default function RichTextEditor({ value, onChange }) {
       setShowLHMenu(false);
       setShowFSMenu(false);
     }}>
-      {/* ── HEADER (History) ── */}
-      <div className="editor-top-bar">
-        <div className="editor-status-label">Rich Text Editor</div>
-        <div className="history-group">
-          <Btn onClick={() => editor.chain().focus().undo().run()} title="Undo (Ctrl+Z)"><Undo size={16} /></Btn>
-          <Btn onClick={() => editor.chain().focus().redo().run()} title="Redo (Ctrl+Y)"><Redo size={16} /></Btn>
+      {/* ── STICKY COMMAND CENTER ── */}
+      <div className="editor-sticky-header">
+        <div className="editor-top-bar">
+          <div className="editor-status-label">Rich Text Editor</div>
+          <div className="history-group">
+            <Btn onClick={() => editor.chain().focus().undo().run()} title="Undo (Ctrl+Z)"><Undo size={16} /></Btn>
+            <Btn onClick={() => editor.chain().focus().redo().run()} title="Redo (Ctrl+Y)"><Redo size={16} /></Btn>
+          </div>
         </div>
-      </div>
 
-      {/* ── TOOLBAR ── */}
-      <div className="editor-toolbar" onClick={e => e.stopPropagation()}>
+        <div className="editor-toolbar" onClick={e => e.stopPropagation()}>
 
-        {/* Headings */}
-        <div className="tb-group">
-          <Btn onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-            active={editor.isActive('heading', { level: 2 })} title="Heading 2">
-            <span className="tb-text">H2</span>
+        {/* Headings Dropdown */}
+        <div className="tb-group" style={{ position: 'relative' }}>
+          <Btn onClick={() => { setShowHeadingMenu(!showHeadingMenu); setShowAlignMenu(false); setShowListMenu(false); setShowFSMenu(false); setShowLHMenu(false); setShowTablePicker(false); setShowCalloutMenu(false); setShowLinkDialog(false); }} active={showHeadingMenu} title="Text Style">
+            {editor.isActive('heading', { level: 2 }) ? <span className="tb-text">H2</span> : 
+             editor.isActive('heading', { level: 3 }) ? <span className="tb-text">H3</span> : 
+             <span className="tb-text">¶</span>}
           </Btn>
-          <Btn onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-            active={editor.isActive('heading', { level: 3 })} title="Heading 3">
-            <span className="tb-text">H3</span>
-          </Btn>
-          <Btn onClick={() => editor.chain().focus().setParagraph().run()}
-            active={editor.isActive('paragraph')} title="Paragraph">
-            <span className="tb-text" style={{ fontSize: '0.7rem' }}>¶</span>
-          </Btn>
+          {showHeadingMenu && (
+            <div className="tb-popover heading-mini-toolbar">
+              <button
+                type="button"
+                className={`tb-btn ${editor.isActive('heading', { level: 2 }) ? 'active' : ''}`}
+                onMouseDown={e => { e.preventDefault(); editor.chain().focus().toggleHeading({ level: 2 }).run(); setShowHeadingMenu(false); }}
+                title="Heading 2"
+              >
+                <span className="tb-text">H2</span>
+              </button>
+              <button
+                type="button"
+                className={`tb-btn ${editor.isActive('heading', { level: 3 }) ? 'active' : ''}`}
+                onMouseDown={e => { e.preventDefault(); editor.chain().focus().toggleHeading({ level: 3 }).run(); setShowHeadingMenu(false); }}
+                title="Heading 3"
+              >
+                <span className="tb-text">H3</span>
+              </button>
+              <button
+                type="button"
+                className={`tb-btn ${editor.isActive('paragraph') ? 'active' : ''}`}
+                onMouseDown={e => { e.preventDefault(); editor.chain().focus().setParagraph().run(); setShowHeadingMenu(false); }}
+                title="Paragraph"
+              >
+                <span className="tb-text">¶</span>
+              </button>
+            </div>
+          )}
         </div>
 
         <Divider />
 
-        {/* Inline formatting */}
-        <div className="tb-group">
-          <Btn onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')} title="Bold (Ctrl+B)"><Bold size={16} /></Btn>
-          <Btn onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive('italic')} title="Italic (Ctrl+I)"><Italic size={16} /></Btn>
-          <Btn onClick={() => editor.chain().focus().toggleStrike().run()} active={editor.isActive('strike')} title="Strikethrough"><Strikethrough size={16} /></Btn>
-          <Btn onClick={() => editor.chain().focus().toggleCode().run()} active={editor.isActive('code')} title="Inline Code"><Code size={16} /></Btn>
+        {/* Inline formatting Dropdown */}
+        <div className="tb-group" style={{ position: 'relative' }}>
+          <Btn onClick={() => { setShowInlineMenu(!showInlineMenu); setShowHeadingMenu(false); setShowAlignMenu(false); setShowListMenu(false); setShowFSMenu(false); setShowLHMenu(false); setShowTablePicker(false); setShowCalloutMenu(false); setShowLinkDialog(false); }} active={showInlineMenu} title="Inline Styles">
+            {editor.isActive('bold') ? <Bold size={16} /> : 
+             editor.isActive('italic') ? <Italic size={16} /> : 
+             editor.isActive('strike') ? <Strikethrough size={16} /> :
+             <Bold size={16} />}
+          </Btn>
+          {showInlineMenu && (
+            <div className="tb-popover align-mini-toolbar">
+              <button
+                type="button"
+                className={`tb-btn ${editor.isActive('bold') ? 'active' : ''}`}
+                onMouseDown={e => { e.preventDefault(); editor.chain().focus().toggleBold().run(); setShowInlineMenu(false); }}
+                title="Bold (Ctrl+B)"
+              >
+                <Bold size={16} />
+              </button>
+              <button
+                type="button"
+                className={`tb-btn ${editor.isActive('italic') ? 'active' : ''}`}
+                onMouseDown={e => { e.preventDefault(); editor.chain().focus().toggleItalic().run(); setShowInlineMenu(false); }}
+                title="Italic (Ctrl+I)"
+              >
+                <Italic size={16} />
+              </button>
+              <button
+                type="button"
+                className={`tb-btn ${editor.isActive('strike') ? 'active' : ''}`}
+                onMouseDown={e => { e.preventDefault(); editor.chain().focus().toggleStrike().run(); setShowInlineMenu(false); }}
+                title="Strikethrough"
+              >
+                <Strikethrough size={16} />
+              </button>
+            </div>
+          )}
         </div>
 
         <Divider />
 
-        {/* Alignment */}
-        <div className="tb-group">
-          <Btn onClick={() => editor.chain().focus().setTextAlign('left').run()} active={editor.isActive({ textAlign: 'left' })} title="Align Left"><AlignLeft size={16} /></Btn>
-          <Btn onClick={() => editor.chain().focus().setTextAlign('center').run()} active={editor.isActive({ textAlign: 'center' })} title="Align Center"><AlignCenter size={16} /></Btn>
-          <Btn onClick={() => editor.chain().focus().setTextAlign('right').run()} active={editor.isActive({ textAlign: 'right' })} title="Align Right"><AlignRight size={16} /></Btn>
-          <Btn onClick={() => editor.chain().focus().setTextAlign('justify').run()} active={editor.isActive({ textAlign: 'justify' })} title="Justify"><AlignJustify size={16} /></Btn>
+        {/* Alignment Dropdown */}
+        <div className="tb-group" style={{ position: 'relative' }}>
+          <Btn onClick={() => { setShowAlignMenu(!showAlignMenu); setShowFSMenu(false); setShowLHMenu(false); setShowTablePicker(false); setShowCalloutMenu(false); setShowLinkDialog(false); }} active={showAlignMenu} title="Text Alignment">
+            {editor.isActive({ textAlign: 'center' }) ? <AlignCenter size={16} /> : 
+             editor.isActive({ textAlign: 'right' }) ? <AlignRight size={16} /> :
+             editor.isActive({ textAlign: 'justify' }) ? <AlignJustify size={16} /> : 
+             <AlignLeft size={16} />}
+          </Btn>
+          {showAlignMenu && (
+            <div className="tb-popover align-mini-toolbar">
+              {[
+                { key: 'left', icon: <AlignLeft size={16} />, title: 'Align Left' },
+                { key: 'center', icon: <AlignCenter size={16} />, title: 'Align Center' },
+                { key: 'right', icon: <AlignRight size={16} />, title: 'Align Right' },
+                { key: 'justify', icon: <AlignJustify size={16} />, title: 'Justify' },
+              ].map(item => (
+                <button
+                  key={item.key}
+                  type="button"
+                  className={`tb-btn ${editor.isActive({ textAlign: item.key }) ? 'active' : ''}`}
+                  onMouseDown={e => { 
+                    e.preventDefault(); 
+                    editor.chain().focus().setTextAlign(item.key).run(); 
+                    setShowAlignMenu(false); 
+                  }}
+                  title={item.title}
+                >
+                  {item.icon}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <Divider />
@@ -349,11 +432,39 @@ export default function RichTextEditor({ value, onChange }) {
 
         <Divider />
 
-        {/* Lists & blocks */}
+        {/* Lists Dropdown */}
+        <div className="tb-group" style={{ position: 'relative' }}>
+          <Btn onClick={() => { setShowListMenu(!showListMenu); setShowAlignMenu(false); setShowFSMenu(false); setShowLHMenu(false); setShowTablePicker(false); setShowCalloutMenu(false); setShowLinkDialog(false); }} active={showListMenu} title="List Options">
+            {editor.isActive('orderedList') ? <ListOrdered size={16} /> : <List size={16} />}
+          </Btn>
+          {showListMenu && (
+            <div className="tb-popover align-mini-toolbar">
+              <button
+                type="button"
+                className={`tb-btn ${editor.isActive('bulletList') ? 'active' : ''}`}
+                onMouseDown={e => { e.preventDefault(); editor.chain().focus().toggleBulletList().run(); setShowListMenu(false); }}
+                title="Bullet List"
+              >
+                <List size={16} />
+              </button>
+              <button
+                type="button"
+                className={`tb-btn ${editor.isActive('orderedList') ? 'active' : ''}`}
+                onMouseDown={e => { e.preventDefault(); editor.chain().focus().toggleOrderedList().run(); setShowListMenu(false); }}
+                title="Numbered List"
+              >
+                <ListOrdered size={16} />
+              </button>
+            </div>
+          )}
+        </div>
+
+        <Divider />
+
+        {/* Other blocks */}
         <div className="tb-group">
-          <Btn onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive('bulletList')} title="Bullet List"><List size={16} /></Btn>
-          <Btn onClick={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive('orderedList')} title="Numbered List"><ListOrdered size={16} /></Btn>
           <Btn onClick={() => editor.chain().focus().toggleBlockquote().run()} active={editor.isActive('blockquote')} title="Blockquote"><Quote size={16} /></Btn>
+          <Btn onClick={() => editor.chain().focus().toggleCode().run()} active={editor.isActive('code')} title="Inline Code"><Code size={16} /></Btn>
           <Btn onClick={() => editor.chain().focus().toggleCodeBlock().run()} active={editor.isActive('codeBlock')} title="Code Block">
             <span className="tb-text">&lt;/&gt;</span>
           </Btn>
@@ -385,6 +496,8 @@ export default function RichTextEditor({ value, onChange }) {
               <Btn onClick={() => editor.chain().focus().addRowBefore().run()} title="Add Row Above"><span className="tb-text">+↑</span></Btn>
               <Btn onClick={() => editor.chain().focus().addRowAfter().run()} title="Add Row Below"><span className="tb-text">+↓</span></Btn>
               <Btn onClick={() => editor.chain().focus().deleteRow().run()} title="Delete Row" danger><span className="tb-text">−R</span></Btn>
+              <Divider />
+              <Btn onClick={() => editor.chain().focus().toggleHeaderRow().run()} title="Toggle Header Row" active={editor.isActive('tableHeader')}><span className="tb-text">TH</span></Btn>
               <Btn onClick={() => editor.chain().focus().deleteTable().run()} title="Delete Table" danger><span className="tb-text">⊗T</span></Btn>
             </div>
           </>
@@ -445,6 +558,7 @@ export default function RichTextEditor({ value, onChange }) {
             </div>
           )}
         </div>
+      </div> {/* End editor-sticky-header */}
       </div>
 
       {/* ── EDITOR AREA ── */}
@@ -475,13 +589,23 @@ export default function RichTextEditor({ value, onChange }) {
         .history-group .tb-btn { width: 32px; height: 32px; opacity: 0.7; }
         .history-group .tb-btn:hover { opacity: 1; background: rgba(124,58,237,0.1); }
 
-        /* Toolbar */
+        /* Sticky Command Center (Header + Toolbar) */
+        .editor-sticky-header {
+          position: sticky; top: 72px; z-index: 30;
+          background: var(--bg-elevated);
+          border-bottom: 1px solid var(--border-subtle);
+          border-radius: 20px 20px 0 0;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+
+        .editor-top-bar {
+          display: flex; align-items: center; justify-content: space-between;
+          padding: 10px 16px; border-bottom: 1px solid rgba(255,255,255,0.03);
+        }
+
         .editor-toolbar {
           display: flex; align-items: center; flex-wrap: wrap;
           gap: 2px; padding: 10px 12px;
-          background: var(--bg-elevated);
-          border-bottom: 1px solid var(--border-subtle);
-          position: sticky; top: 72px; z-index: 20;
         }
         .tb-group { display: flex; align-items: center; gap: 2px; }
         .tb-div { width: 1px; height: 22px; background: var(--border-subtle); margin: 0 4px; flex-shrink:0; }
@@ -525,7 +649,19 @@ export default function RichTextEditor({ value, onChange }) {
         .tp-cell:hover ~ .tp-cell { background: var(--bg-card); }
 
         /* Custom Dropdown Menus */
-        .lh-menu, .fs-menu { min-width: 80px; padding: 6px; }
+        .lh-menu { width: 80px; }
+        .align-mini-toolbar {
+          display: flex !important; flex-direction: row !important;
+          gap: 4px; padding: 4px; 
+          width: max-content !important; min-width: unset !important;
+          left: 50% !important; transform: translateX(-50%) !important;
+        }
+        .heading-mini-toolbar {
+          display: flex !important; flex-direction: row !important;
+          gap: 4px; padding: 4px; 
+          width: max-content !important; min-width: unset !important;
+          left: 0 !important; transform: none !important;
+        }
         .fs-menu { min-width: 90px; }
         .menu-option {
           display: flex; align-items: center; justify-content: center;
@@ -644,19 +780,26 @@ export default function RichTextEditor({ value, onChange }) {
 
         /* ── Table ─────────────────────────────────────────────────── */
         .rich-editor-content table {
-          border-collapse: collapse; width: 100%; margin: 32px 0;
+          border-collapse: collapse; width: auto; min-width: 200px; margin: 32px 0;
           border-radius: 12px; overflow: hidden;
+          border: 1px solid var(--border-subtle);
         }
         .rich-editor-content th {
-          background: rgba(124,58,237,0.15); color: var(--accent-soft);
-          font-weight: 700; font-size: 0.85rem; text-transform: uppercase;
+          background: rgba(124, 58, 237, 0.15); color: var(--accent);
+          font-weight: 800; font-size: 1rem; text-transform: uppercase;
           letter-spacing: 0.05em; padding: 12px 16px;
-          border: 1px solid var(--border-subtle); text-align: left;
+          border: 1px solid rgba(124, 58, 237, 0.3); text-align: left;
         }
         .rich-editor-content td {
-          padding: 12px 16px; border: 1px solid var(--border-subtle);
+          padding: 12px 16px; border: 1px solid rgba(124, 58, 237, 0.15);
           color: var(--text-secondary); vertical-align: top;
           transition: background 0.2s;
+          position: relative;
+        }
+        .rich-editor-content .selectedCell {
+          background: rgba(124, 58, 237, 0.1) !important;
+          border: 2px solid var(--accent) !important;
+          z-index: 5;
         }
         .rich-editor-content tr:hover td { background: rgba(124,58,237,0.04); }
         .rich-editor-content .selectedCell:after {
@@ -664,10 +807,21 @@ export default function RichTextEditor({ value, onChange }) {
           background: rgba(124,58,237,0.15); pointer-events: none;
         }
         .rich-editor-content .column-resize-handle {
-          position: absolute; right: -2px; top: 0; bottom: -2px; width: 4px;
+          position: absolute; right: -1px; top: 0; bottom: 0; width: 2px;
           background: var(--accent); pointer-events: none;
+          z-index: 20;
+          opacity: 0;
         }
-        .tableWrapper { overflow-x: auto; }
+        .rich-editor-content table:hover .column-resize-handle {
+          opacity: 0.8;
+        }
+        .tableWrapper { overflow-x: auto; padding: 10px 0; }
+        .rich-editor-content tr:nth-child(even) td { background: rgba(255,255,255,0.01); }
+
+        /* Table Alignment Support */
+        .rich-editor-content table[style*="text-align: center"] { margin-left: auto !important; margin-right: auto !important; }
+        .rich-editor-content table[style*="text-align: right"] { margin-left: auto !important; margin-right: 0 !important; }
+        .rich-editor-content table[style*="text-align: left"] { margin-left: 0 !important; margin-right: auto !important; }
 
         /* ── Callout Cards ──────────────────────────────────────────── */
         .rich-editor-content .callout {
@@ -707,7 +861,7 @@ export default function RichTextEditor({ value, onChange }) {
         .rich-editor-content a.article-link:hover { color: var(--accent-glow); }
 
         /* Link popover */
-        .link-popover { min-width: 280px; }
+        .link-popover { min-width: 280px; right: 0 !important; left: auto !important; }
         .link-dialog-title { font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 12px; }
         .link-field { margin-bottom: 10px; }
         .link-field label { display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px; }

@@ -19,7 +19,7 @@ export default function ArticleDetailLayout({
   publishDate, 
   readTime
 }) {
-  const [stats, setStats] = useState({ likes: 0, comments: 0, isLiked: false, recentComments: [] })
+  const [stats, setStats] = useState({ likes: 0, comments: 0, isLiked: false, isBookmarked: false, recentComments: [] })
   const [shareModalOpen, setShareModalOpen] = useState(false)
   const [copied, setCopied] = useState(false)
   const [currentUrl, setCurrentUrl] = useState('')
@@ -53,6 +53,18 @@ export default function ArticleDetailLayout({
         isLiked = !!userLike
       }
 
+      // Check if user bookmarked
+      let isBookmarked = false
+      if (userId) {
+        const { data: userBookmark } = await supabase
+          .from('article_bookmarks')
+          .select('id')
+          .eq('article_id', id)
+          .eq('user_id', userId)
+          .single()
+        isBookmarked = !!userBookmark
+      }
+
       // Fetch comment count
       const { count: comments } = await supabase
         .from('article_comments')
@@ -76,6 +88,7 @@ export default function ArticleDetailLayout({
         likes: likes || 0, 
         comments: comments || 0, 
         isLiked,
+        isBookmarked,
         recentComments: recentComments || []
       })
     }
@@ -100,6 +113,23 @@ export default function ArticleDetailLayout({
       // Optimistic Update
       setStats(prev => ({ ...prev, likes: prev.likes + 1, isLiked: true }))
       await supabase.from('article_likes').insert({ article_id: id, user_id: userId })
+    }
+  }
+
+  const handleBookmarkToggle = async () => {
+    const { data: session } = await supabase.auth.getSession()
+    if (!session?.session?.user) {
+      alert('Please sign in to save articles.')
+      return
+    }
+
+    const userId = session.session.user.id
+    if (stats.isBookmarked) {
+      setStats(prev => ({ ...prev, isBookmarked: false }))
+      await supabase.from('article_bookmarks').delete().eq('article_id', id).eq('user_id', userId)
+    } else {
+      setStats(prev => ({ ...prev, isBookmarked: true }))
+      await supabase.from('article_bookmarks').insert({ article_id: id, user_id: userId })
     }
   }
 
@@ -211,6 +241,8 @@ export default function ArticleDetailLayout({
               likes={stats.likes} 
               isLiked={stats.isLiked}
               onLikeToggle={handleLikeToggle}
+              isBookmarked={stats.isBookmarked}
+              onBookmarkToggle={handleBookmarkToggle}
               onShare={handleShare}
               commentsCount={stats.comments} 
               recentComments={stats.recentComments}
@@ -264,11 +296,19 @@ export default function ArticleDetailLayout({
         }
 
         .main-container {
-          max-width: 1300px; margin: 0 auto; padding: 0 4%; position: relative; z-index: 1;
+          max-width: 1320px; margin: 0 auto; padding: 0 5%; position: relative; z-index: 1; width: 100%;
         }
 
-        .article-grid {
-          display: grid; grid-template-columns: 1fr 320px; gap: 60px; align-items: start;
+        .article-layout {
+          display: grid; 
+          grid-template-columns: minmax(0, 1fr) 320px; 
+          gap: 60px; 
+          align-items: start;
+          justify-content: center;
+        }
+
+        .content-col {
+          max-width: 900px; width: 100%; min-width: 0;
         }
 
         .article-body-wrapper {
@@ -281,6 +321,8 @@ export default function ArticleDetailLayout({
           line-height: 1.8; 
           font-size: 1.15rem; 
           backdrop-filter: blur(10px);
+          max-width: 100%;
+          overflow: hidden; /* Ensure content doesn't bleed */
         }
 
         .article-content-render {
@@ -319,8 +361,8 @@ export default function ArticleDetailLayout({
         /* Tables */
         .article-content-render table {
           border-collapse: collapse;
-          width: auto;
-          min-width: min(100%, 600px);
+          table-layout: auto !important; /* Allow natural width calculation */
+          width: 100% !important;
           margin: 32px 0;
           border-radius: 12px;
           overflow: hidden;
@@ -329,45 +371,61 @@ export default function ArticleDetailLayout({
         }
         .article-content-render th {
           background: rgba(124, 58, 237, 0.15);
-          color: var(--accent-soft);
-          font-weight: 700;
-          font-size: 0.85rem;
+          color: var(--accent);
+          font-weight: 800;
+          font-size: 1rem;
           text-transform: uppercase;
           letter-spacing: 0.05em;
-          padding: 12px 16px;
-          border: 1px solid var(--border-subtle);
+          padding: 14px 20px;
+          border: 1px solid rgba(124, 58, 237, 0.3);
           text-align: left;
-          white-space: nowrap;
+          white-space: normal !important; 
+          word-break: normal;
         }
         .article-content-render td {
-          padding: 12px 16px;
-          border: 1px solid var(--border-subtle);
+          padding: 14px 20px;
+          border: 1px solid rgba(124, 58, 237, 0.15);
           color: var(--text-secondary);
           vertical-align: top;
           transition: background 0.2s;
-          min-width: 120px;
+          word-break: normal;
+        }
+        .article-content-render tr:nth-child(even) td {
+          background: rgba(255, 255, 255, 0.01);
         }
         .article-content-render tr:hover td {
           background: rgba(124, 58, 237, 0.04);
         }
 
+        /* Table Alignment Support */
+        .article-content-render table[style*="text-align: center"] { margin-left: auto !important; margin-right: auto !important; }
+        .article-content-render table[style*="text-align: right"] { margin-left: auto !important; margin-right: 0 !important; }
+        .article-content-render table[style*="text-align: left"] { margin-left: 0 !important; margin-right: auto !important; }
+
         /* Support for Tiptap's tableWrapper */
         .tableWrapper {
-          width: 100%;
+          width: 100% !important;
+          max-width: 100% !important;
           overflow-x: auto !important;
           margin: 32px 0;
           -webkit-overflow-scrolling: touch;
           display: block !important;
         }
 
-        .tableWrapper::-webkit-scrollbar, 
-        .article-content-render table::-webkit-scrollbar {
-          height: 6px;
+        .tableWrapper::-webkit-scrollbar {
+          height: 8px !important;
         }
-        .tableWrapper::-webkit-scrollbar-thumb,
-        .article-content-render table::-webkit-scrollbar-thumb {
-          background: var(--accent-soft);
+        .tableWrapper::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.05) !important;
           border-radius: 10px;
+        }
+        .tableWrapper::-webkit-scrollbar-thumb {
+          background: var(--accent) !important;
+          border-radius: 10px;
+          border: 2px solid var(--bg-card);
+        }
+        .tableWrapper::-webkit-scrollbar-thumb:hover {
+          background: var(--accent-glow) !important;
         }
 
         @media (max-width: 1024px) {
