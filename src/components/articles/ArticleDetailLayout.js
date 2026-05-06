@@ -125,11 +125,22 @@ export default function ArticleDetailLayout({
 
     const userId = session.session.user.id
     if (stats.isBookmarked) {
+      // Optimistic Update
       setStats(prev => ({ ...prev, isBookmarked: false }))
-      await supabase.from('article_bookmarks').delete().eq('article_id', id).eq('user_id', userId)
+      const { error } = await supabase.from('article_bookmarks').delete().eq('article_id', id).eq('user_id', userId)
+      if (error) {
+        setStats(prev => ({ ...prev, isBookmarked: true }))
+        console.error('Error removing bookmark:', error)
+      }
     } else {
+      // Optimistic Update
       setStats(prev => ({ ...prev, isBookmarked: true }))
-      await supabase.from('article_bookmarks').insert({ article_id: id, user_id: userId })
+      const { error } = await supabase.from('article_bookmarks').insert({ article_id: id, user_id: userId })
+      if (error) {
+        setStats(prev => ({ ...prev, isBookmarked: false }))
+        console.error('Error adding bookmark:', error)
+        alert('Could not save bookmark. Please try again.')
+      }
     }
   }
 
@@ -258,6 +269,8 @@ export default function ArticleDetailLayout({
           onLikeToggle={handleLikeToggle}
           onShare={handleShare}
           commentsCount={stats.comments} 
+          isBookmarked={stats.isBookmarked}
+          onBookmarkToggle={handleBookmarkToggle}
         />
       </div>
 
@@ -300,11 +313,18 @@ export default function ArticleDetailLayout({
         }
 
         .article-layout {
-          display: grid; 
-          grid-template-columns: minmax(0, 1fr) 320px; 
-          gap: 60px; 
-          align-items: start;
-          justify-content: center;
+          display: block;
+          width: 100%;
+        }
+
+        @media (min-width: 1024px) {
+          .article-layout {
+            display: grid; 
+            grid-template-columns: minmax(0, 1fr) 320px; 
+            gap: 60px; 
+            align-items: start;
+            justify-content: center;
+          }
         }
 
         .content-col {
@@ -356,6 +376,8 @@ export default function ArticleDetailLayout({
         .article-content-render li { margin-bottom: 8px; line-height: 1.7; }
         .article-content-render ul li { list-style-type: disc; }
         .article-content-render ol li { list-style-type: decimal; }
+        .article-content-render ul, .article-content-render ol { padding-left: 28px; margin-bottom: 24px; }
+        .article-content-render li { margin-bottom: 8px; line-height: 1.7; }
         .article-content-render hr { border: none; border-top: 1px solid var(--border-subtle); margin: 48px 0; }
 
         /* Tables */
@@ -490,7 +512,7 @@ export default function ArticleDetailLayout({
         }
 
         @media (max-width: 1024px) {
-          .article-grid { display: block !important; }
+          .article-layout { display: block !important; }
           .content-col { margin-bottom: 40px; }
           .article-body-wrapper { 
             padding: 32px 20px !important; 

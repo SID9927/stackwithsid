@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation'
 import Navbar from './Navbar'
 import Footer from './Footer'
 import PageWrapper from './PageWrapper'
+import ScrollToTop from './ScrollToTop'
 
 export default function ConditionalLayout({ children }) {
   const pathname = usePathname()
@@ -19,6 +20,7 @@ export default function ConditionalLayout({ children }) {
       <PageWrapper>
         {children}
       </PageWrapper>
+      <ScrollToTop />
       <Footer />
     </>
   )

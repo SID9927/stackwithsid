@@ -3,7 +3,15 @@
 import { motion } from 'framer-motion'
 import { ThumbsUp, MessageSquare, Share2, Bookmark } from 'lucide-react'
 
-export default function ArticleMobileBar({ likes = 0, isLiked, onLikeToggle, onShare, commentsCount = 0 }) {
+export default function ArticleMobileBar({ 
+  likes = 0, 
+  isLiked, 
+  onLikeToggle, 
+  onShare, 
+  commentsCount = 0,
+  isBookmarked,
+  onBookmarkToggle
+}) {
   const scrollToComments = () => {
     const el = document.getElementById('comments');
     el?.scrollIntoView({ behavior: 'smooth' });
@@ -35,7 +43,12 @@ export default function ArticleMobileBar({ likes = 0, isLiked, onLikeToggle, onS
         </div>
         <div style={{ display: 'flex', gap: '16px' }}>
           <button className="mobile-btn icon" onClick={onShare}><Share2 size={20} /></button>
-          <button className="mobile-btn icon"><Bookmark size={20} /></button>
+          <button 
+            className={`mobile-btn icon ${isBookmarked ? 'active' : ''}`} 
+            onClick={onBookmarkToggle}
+          >
+            <Bookmark size={20} fill={isBookmarked ? 'var(--accent)' : 'none'} color={isBookmarked ? 'var(--accent)' : 'currentColor'} />
+          </button>
         </div>
       </div>
 

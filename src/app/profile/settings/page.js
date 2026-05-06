@@ -110,6 +110,7 @@ export default function ProfileSettingsPage() {
   }, [])
 
   const fetchBookmarks = async () => {
+    if (!user) return
     setLoadingBookmarks(true)
     try {
       const { data, error } = await supabase
@@ -126,10 +127,20 @@ export default function ProfileSettingsPage() {
         `)
         .eq('user_id', user.id)
 
-      if (error) throw error
-      setBookmarks(data.map(b => b.articles))
+      if (error) {
+        console.error('Supabase error fetching bookmarks:', error)
+        throw error
+      }
+      
+      // Filter out any bookmarks where the article join failed (null articles)
+      const validBookmarks = data
+        ? data.map(b => b.articles).filter(Boolean)
+        : []
+        
+      setBookmarks(validBookmarks)
     } catch (error) {
       console.error('Error fetching bookmarks:', error)
+      setMessage({ type: 'error', text: 'Could not load your saved articles.' })
     } finally {
       setLoadingBookmarks(false)
     }
