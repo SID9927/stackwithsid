@@ -270,14 +270,6 @@ export default function ProfileSettingsPage() {
                     </div>
                   </div>
 
-                  <AnimatePresence>
-                    {message.text && (
-                      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} className={`alert-banner ${message.type}`}>
-                        {message.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
-                        <span>{message.text}</span>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
 
                   <div className="form-sections">
                     <div className="input-grid">
@@ -378,12 +370,28 @@ export default function ProfileSettingsPage() {
                   </div>
                   <div className="card-footer">
                     <div className="footer-note">Your profile is visible to other members in the community.</div>
-                    <div className="footer-actions">
-                      <button type="button" onClick={() => router.push('/')} className="btn-secondary">Discard</button>
-                      <button type="submit" disabled={saving} className="btn-primary">
-                        {saving ? <Loader2 size={18} className="spin" /> : <Save size={18} />}
-                        {saving ? 'Syncing...' : 'Update Profile'}
-                      </button>
+                    <div className="footer-actions-container">
+                      <div className="footer-actions">
+                        <button type="button" onClick={() => router.push('/')} className="btn-secondary">Discard</button>
+                        <button type="submit" disabled={saving} className="btn-primary">
+                          {saving ? <Loader2 size={18} className="spin" /> : <Save size={18} />}
+                          {saving ? 'Syncing...' : 'Update Profile'}
+                        </button>
+                      </div>
+
+                      <AnimatePresence>
+                        {message.text && (
+                          <motion.div 
+                            initial={{ opacity: 0, y: 10, scale: 0.95 }} 
+                            animate={{ opacity: 1, y: 0, scale: 1 }} 
+                            exit={{ opacity: 0, scale: 0.95 }} 
+                            className={`alert-banner ${message.type}`}
+                          >
+                            {message.type === 'success' ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+                            <span>{message.text}</span>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
                   </div>
                 </div>
@@ -486,16 +494,45 @@ export default function ProfileSettingsPage() {
         .gender-toggle button { flex: 1; height: 52px; border-radius: 14px; border: 1px solid var(--border-subtle); background: var(--bg-secondary); color: var(--text-muted); font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s; outline: none; }
         .gender-toggle button.active { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 10px 15px -3px rgba(124, 58, 237, 0.3); }
         .bio-section textarea { width: 100%; background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: 20px; padding: 20px; color: var(--text-primary); font-size: 14px; line-height: 1.6; outline: none; transition: border 0.2s; resize: none; margin-top: 10px; }
-        .card-footer { margin-top: 48px; padding-top: 32px; border-top: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center; }
-        .footer-note { font-size: 12px; color: var(--text-muted); font-style: italic; }
+        .card-footer { margin-top: 48px; padding-top: 32px; border-top: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: flex-start; }
+        .footer-note { font-size: 12px; color: var(--text-muted); font-style: italic; max-width: 250px; line-height: 1.6; }
+        .footer-actions-container { display: flex; flex-direction: column; gap: 16px; align-items: flex-end; }
         .footer-actions { display: flex; gap: 20px; align-items: center; }
+        
+        .alert-banner { display: flex !important; flex-direction: row !important; align-items: center !important; justify-content: flex-end !important; gap: 10px !important; width: 100%; padding: 4px 0; transition: all 0.3s ease; }
+        .alert-banner.success { color: #a855f7 !important; }
+        .alert-banner.error { color: #f87171 !important; }
+        .alert-banner span { font-size: 14px; font-weight: 700; color: inherit !important; line-height: 1; }
+        .alert-banner :global(svg) { color: inherit !important; flex-shrink: 0; }
         .bookmarks-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-        .bookmark-item { text-decoration: none; display: block; background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: 28px; padding: 28px; transition: all 0.3s ease; }
-        .bookmark-item:hover { transform: translateY(-8px); border-color: var(--accent); background: var(--bg-card); }
+        .bookmark-item { text-decoration: none; display: block; background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: 28px; padding: 32px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden; }
+        .bookmark-item::before { content: ''; position: absolute; inset: 0; background: var(--gradient-purple); opacity: 0; transition: opacity 0.3s; z-index: 0; }
+        .bookmark-item:hover { transform: translateY(-8px); border-color: var(--accent); background: var(--bg-card); box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+        
+        .bookmark-content { position: relative; z-index: 1; }
+        .bookmark-content h3 { font-family: Syne, sans-serif; font-size: 18px; font-weight: 700; color: var(--text-primary); margin: 0 0 12px; line-height: 1.4; transition: color 0.3s; }
+        .bookmark-content p { color: var(--text-secondary); font-size: 14px; line-height: 1.6; margin-bottom: 24px; opacity: 0.7; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        
+        .bookmark-meta { display: flex; align-items: center; gap: 10px; color: var(--accent); font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; }
+        .bookmark-meta span { margin-top: 1px; }
+        .meta-icon { opacity: 0.5; transition: transform 0.3s; }
+        .bookmark-item:hover .meta-icon { transform: translateX(4px); opacity: 1; }
+
+        .empty-bookmarks { text-align: center; padding: 60px 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .empty-icon { width: 80px; height: 80px; border-radius: 24px; background: var(--bg-secondary); display: flex; align-items: center; justify-content: center; color: var(--text-muted); margin-bottom: 24px; opacity: 0.5; }
+        .empty-bookmarks h3 { font-family: Syne, sans-serif; font-size: 20px; font-weight: 800; color: var(--text-primary); margin-bottom: 8px; }
+        .empty-bookmarks p { color: var(--text-muted); font-size: 14px; max-width: 280px; line-height: 1.6; margin-bottom: 0; }
+
+        .loading-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 0; gap: 16px; color: var(--text-muted); font-weight: 600; font-size: 14px; }
         .btn-primary { background: var(--accent); color: #fff; border: none; height: 56px; padding: 0 36px; border-radius: 18px; font-size: 15px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 12px; transition: all 0.2s; box-shadow: 0 10px 15px -3px rgba(124, 58, 237, 0.3); text-decoration: none; }
         .btn-secondary { background: transparent; color: var(--text-muted); border: none; padding: 0 28px; height: 56px; font-weight: 700; cursor: pointer; transition: color 0.2s; font-size: 15px; }
         .spin { animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        @media (max-width: 768px) {
+          .bookmarks-grid { grid-template-columns: 1fr; }
+          .bookmark-item { padding: 24px; border-radius: 20px; }
+        }
       `}</style>
     </main>
   )

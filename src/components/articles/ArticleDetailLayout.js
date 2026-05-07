@@ -56,12 +56,16 @@ export default function ArticleDetailLayout({
       // Check if user bookmarked
       let isBookmarked = false
       if (userId) {
-        const { data: userBookmark } = await supabase
+        const { data: userBookmark, error: bookmarkError } = await supabase
           .from('article_bookmarks')
           .select('id')
           .eq('article_id', id)
           .eq('user_id', userId)
-          .single()
+          .maybeSingle()
+        
+        if (bookmarkError) {
+          console.error('Error checking bookmark status:', bookmarkError)
+        }
         isBookmarked = !!userBookmark
       }
 
@@ -117,29 +121,59 @@ export default function ArticleDetailLayout({
   }
 
   const handleBookmarkToggle = async () => {
-    const { data: session } = await supabase.auth.getSession()
-    if (!session?.session?.user) {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.user) {
       alert('Please sign in to save articles.')
       return
     }
 
-    const userId = session.session.user.id
-    if (stats.isBookmarked) {
-      // Optimistic Update
-      setStats(prev => ({ ...prev, isBookmarked: false }))
-      const { error } = await supabase.from('article_bookmarks').delete().eq('article_id', id).eq('user_id', userId)
+    const userId = session.user.id
+    const wasBookmarked = stats.isBookmarked
+
+    // Sanity check
+    if (!id) {
+      console.error('Bookmark Error: Article ID is missing')
+      alert('Could not save bookmark: Article ID is missing.')
+      return
+    }
+
+    // Optimistic Update
+    setStats(prev => ({ ...prev, isBookmarked: !wasBookmarked }))
+
+    if (wasBookmarked) {
+      const { error } = await supabase
+        .from('article_bookmarks')
+        .delete()
+        .eq('article_id', id)
+        .eq('user_id', userId)
+
       if (error) {
         setStats(prev => ({ ...prev, isBookmarked: true }))
         console.error('Error removing bookmark:', error)
+        alert(`Could not remove bookmark: ${error.message || 'Please try again.'}`)
       }
     } else {
-      // Optimistic Update
-      setStats(prev => ({ ...prev, isBookmarked: true }))
-      const { error } = await supabase.from('article_bookmarks').insert({ article_id: id, user_id: userId })
+      const { error } = await supabase
+        .from('article_bookmarks')
+        .insert({ article_id: id, user_id: userId })
+
       if (error) {
+        // If it's a unique constraint violation, it's already bookmarked, so we can just stay true
+        if (error.code === '23505') {
+          console.warn('Article already bookmarked')
+          return
+        }
+
         setStats(prev => ({ ...prev, isBookmarked: false }))
-        console.error('Error adding bookmark:', error)
-        alert('Could not save bookmark. Please try again.')
+        console.error('Error adding bookmark:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+          article_id: id,
+          user_id: userId
+        })
+        alert(`Could not save bookmark: ${error.message || 'Permission denied or database error.'}`)
       }
     }
   }
