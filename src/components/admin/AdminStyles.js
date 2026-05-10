@@ -38,8 +38,9 @@ export default function AdminStyles() {
       }
 
       @media (max-width: 1024px) {
+        :root { --sidebar-width: 0px !important; }
         .admin-main { 
-          margin-left: 0; 
+          margin-left: 0 !important; 
           border-radius: 0; 
           padding: 0; 
           border-left: none;

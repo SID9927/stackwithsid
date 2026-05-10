@@ -6,7 +6,16 @@ import { MessageSquare, Send, User, Trash2, Clock } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { timeAgo } from '@/lib/utils'
 
-export default function CommentSection({ articleId, totalCount }) {
+export default function CommentSection({ 
+  articleId, // Keep for backward compatibility
+  targetId, 
+  targetType = 'article', 
+  totalCount 
+}) {
+  const finalId = targetId || articleId
+  const tableName = targetType === 'article' ? 'article_comments' : 'interview_comments'
+  const foreignKey = targetType === 'article' ? 'article_id' : 'question_id'
+
   const [comments, setComments] = useState([])
   const [newComment, setNewComment] = useState('')
   const [replyTo, setReplyTo] = useState(null)
@@ -27,10 +36,10 @@ export default function CommentSection({ articleId, totalCount }) {
       setUser(session?.user ?? null)
     })
 
-    if (articleId) fetchComments(true)
+    if (finalId) fetchComments(true)
 
     return () => subscription.unsubscribe()
-  }, [articleId])
+  }, [finalId, targetType])
 
   async function fetchComments(reset = false) {
     if (reset) setLoading(true)
@@ -38,7 +47,7 @@ export default function CommentSection({ articleId, totalCount }) {
     const end = start + pageSize - 1
 
     const { data } = await supabase
-      .from('article_comments')
+      .from(tableName)
       .select(`
         *,
         profiles (
@@ -46,7 +55,7 @@ export default function CommentSection({ articleId, totalCount }) {
           avatar_url
         )
       `)
-      .eq('article_id', articleId)
+      .eq(foreignKey, finalId)
       .order('created_at', { ascending: false })
       .range(start, end)
     
@@ -73,9 +82,9 @@ export default function CommentSection({ articleId, totalCount }) {
 
     setSubmitting(true)
     const { data, error } = await supabase
-      .from('article_comments')
+      .from(tableName)
       .insert({
-        article_id: articleId,
+        [foreignKey]: finalId,
         user_id: user.id,
         content: content.trim(),
         parent_id: parentId
@@ -106,7 +115,7 @@ export default function CommentSection({ articleId, totalCount }) {
   const handleDelete = async (id) => {
     if (!confirm('Are you sure you want to delete this comment?')) return
     
-    const { error } = await supabase.from('article_comments').delete().eq('id', id)
+    const { error } = await supabase.from(tableName).delete().eq('id', id)
     if (!error) {
       setComments(comments.filter(c => c.id !== id))
     }

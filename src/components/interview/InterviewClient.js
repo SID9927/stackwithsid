@@ -15,21 +15,209 @@ import {
   ChevronRight,
   Filter
 } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
 import InterviewQuestionCard from './InterviewQuestionCard'
 import InterviewDetailView from './InterviewDetailView'
 
+import { supabase } from '@/lib/supabase'
+import { X, Copy, Check, ThumbsUp, MessageSquare, Bookmark, Share2 } from 'lucide-react'
+import { FaTwitter, FaLinkedin, FaWhatsapp } from 'react-icons/fa'
+
 export default function InterviewClient({ initialQuestions }) {
+  const [questions, setQuestions] = useState(initialQuestions)
+  const [loading, setLoading] = useState(false)
+  const searchParams = useSearchParams()
+  const qId = searchParams.get('q')
+
   const [view, setView] = useState('hub')
   const [activeFilter, setActiveFilter] = useState({ type: null, value: null })
   const [subTab, setSubTab] = useState('path') // 'path', 'frequent', 'random'
-  const [selectedId, setSelectedId] = useState(null)
+  const [selectedId, setSelectedId] = useState(qId || null)
   const [query, setQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [isMobileListOpen, setIsMobileListOpen] = useState(false)
   const itemsPerPage = 8
 
+  // Interaction State
+  const [stats, setStats] = useState({ likes: 0, comments: 0, isLiked: false, isBookmarked: false })
+  const [shareModalOpen, setShareModalOpen] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const [currentUrl, setCurrentUrl] = useState('')
+
+  // Sync with URL if it changes
+  useEffect(() => {
+    if (qId) {
+      // Find question by slug or ID
+      const question = questions.find(q => q.slug === qId || q.id === qId)
+      if (question) {
+        setSelectedId(question.id)
+        setView('list')
+        // Automatically filter by the tech stack of this question
+        if (question.stack) {
+          setActiveFilter({ type: 'tech', value: question.stack })
+        }
+      }
+    } else if (!selectedId && questions.length > 0) {
+      // Default to first if none in URL
+      setSelectedId(questions[0].id)
+    }
+  }, [qId, questions])
+
+  // Update currentUrl for sharing whenever selectedId changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.origin + '/interview')
+      if (selectedId) {
+        const question = questions.find(q => q.id === selectedId)
+        url.searchParams.set('q', question?.slug || selectedId)
+      }
+      setCurrentUrl(url.toString())
+    }
+  }, [selectedId, questions])
+
+  // Fetch stats for the selected question
+  useEffect(() => {
+    if (!selectedId) return
+
+    async function fetchStats() {
+      const { data: { session } } = await supabase.auth.getSession()
+      const userId = session?.user?.id
+
+      // Fetch like count
+      const { count: likes } = await supabase
+        .from('interview_likes')
+        .select('*', { count: 'exact', head: true })
+        .eq('question_id', selectedId)
+
+      // Check if user liked
+      let isLiked = false
+      if (userId) {
+        const { data: userLike } = await supabase
+          .from('interview_likes')
+          .select('id')
+          .eq('question_id', selectedId)
+          .eq('user_id', userId)
+          .maybeSingle()
+        isLiked = !!userLike
+      }
+
+      // Check if user bookmarked
+      let isBookmarked = false
+      if (userId) {
+        const { data: userBookmark } = await supabase
+          .from('interview_bookmarks')
+          .select('id')
+          .eq('question_id', selectedId)
+          .eq('user_id', userId)
+          .maybeSingle()
+        isBookmarked = !!userBookmark
+      }
+
+      // Fetch comment count
+      const { count: commentsCount } = await supabase
+        .from('interview_comments')
+        .select('*', { count: 'exact', head: true })
+        .eq('question_id', selectedId)
+
+      setStats({ 
+        likes: likes || 0, 
+        comments: commentsCount || 0,
+        isLiked,
+        isBookmarked
+      })
+    }
+
+    fetchStats()
+  }, [selectedId])
+
+  const handleLikeToggle = async () => {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.user) {
+      alert('Please sign in to like questions.')
+      return
+    }
+
+    const userId = session.user.id
+    const wasLiked = stats.isLiked
+
+    setStats(prev => ({ 
+      ...prev, 
+      likes: wasLiked ? prev.likes - 1 : prev.likes + 1, 
+      isLiked: !wasLiked 
+    }))
+
+    if (wasLiked) {
+      await supabase.from('interview_likes').delete().eq('question_id', selectedId).eq('user_id', userId)
+    } else {
+      await supabase.from('interview_likes').insert({ question_id: selectedId, user_id: userId })
+    }
+  }
+
+  const handleBookmarkToggle = async () => {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.user) {
+      alert('Please sign in to save questions.')
+      return
+    }
+
+    const userId = session.user.id
+    const wasBookmarked = stats.isBookmarked
+
+    setStats(prev => ({ ...prev, isBookmarked: !wasBookmarked }))
+
+    if (wasBookmarked) {
+      await supabase.from('interview_bookmarks').delete().eq('question_id', selectedId).eq('user_id', userId)
+    } else {
+      await supabase.from('interview_bookmarks').insert({ question_id: selectedId, user_id: userId })
+    }
+  }
+
+  const handleShare = async () => {
+    const shareData = {
+      title: selectedQuestion?.question,
+      text: `Check out this interview question: ${selectedQuestion?.question}`,
+      url: currentUrl,
+    }
+
+    if (navigator.share) {
+      try { await navigator.share(shareData) } catch (err) { console.error('Error sharing:', err) }
+    } else {
+      setShareModalOpen(true)
+    }
+  }
+
+  const copyToClipboard = async () => {
+    await navigator.clipboard.writeText(currentUrl)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+
+  // Real-time data sync
+  useEffect(() => {
+    const channel = supabase
+      .channel('public-interview-questions')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'interview_questions' }, async (payload) => {
+        // Refresh all data to ensure sorting and filtering stay correct
+        const { data } = await supabase
+          .from('interview_questions')
+          .select('id, question, answer, stack, difficulty, created_at, company')
+          .order('created_at', { ascending: false })
+        
+        if (data) {
+          // Merge with mocks if needed, but usually we prefer DB data
+          setQuestions(data)
+        }
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [])
+
   const filtered = useMemo(() => {
-    let list = initialQuestions.filter(q => {
+    let list = questions.filter(q => {
       const matchesFilter = !activeFilter.value || 
                           (activeFilter.type === 'tech' ? q.stack === activeFilter.value : q.company === activeFilter.value)
       const matchesQuery = !query || q.question?.toLowerCase().includes(query.toLowerCase())
@@ -42,11 +230,11 @@ export default function InterviewClient({ initialQuestions }) {
     } else if (subTab === 'random') {
       list = [...list].sort(() => Math.random() - 0.5)
     } else if (subTab === 'frequent') {
-      list = list.filter((_, i) => i % 2 === 0) 
+      list = list.filter(q => q.is_frequent) 
     }
 
     return list
-  }, [initialQuestions, activeFilter, query, subTab])
+  }, [questions, activeFilter, query, subTab])
 
   const paginatedList = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage
@@ -58,6 +246,12 @@ export default function InterviewClient({ initialQuestions }) {
   const selectedQuestion = useMemo(() => {
     return filtered.find(q => q.id === selectedId) || filtered[0]
   }, [filtered, selectedId])
+
+  const socialLinks = useMemo(() => [
+    { name: 'WhatsApp', icon: <FaWhatsapp size={20} />, color: '#25D366', url: `https://wa.me/?text=${encodeURIComponent((selectedQuestion?.question || '') + ' ' + currentUrl)}` },
+    { name: 'X', icon: <FaTwitter size={20} />, color: '#000000', url: `https://twitter.com/intent/tweet?text=${encodeURIComponent(selectedQuestion?.question || '')}&url=${encodeURIComponent(currentUrl)}` },
+    { name: 'LinkedIn', icon: <FaLinkedin size={20} />, color: '#0077b5', url: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(currentUrl)}` }
+  ], [selectedQuestion, currentUrl])
 
   useEffect(() => {
     if (filtered.length > 0) {
@@ -72,14 +266,19 @@ export default function InterviewClient({ initialQuestions }) {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const techCategories = [
-    { name: 'React', icon: <Cpu />, count: 124, desc: 'Hooks, Virtual DOM, SSR' },
-    { name: 'Node.js', icon: <Cpu />, count: 85, desc: 'Event Loop, Streams, Express' },
-    { name: 'JavaScript', icon: <Cpu />, count: 156, desc: 'Closures, Prototypes, Async' },
-    { name: 'System Design', icon: <Cpu />, count: 42, desc: 'Scaling, Caching, DBs' },
-  ]
+  const techCategories = useMemo(() => {
+    const stacks = [...new Set(questions.map(q => q.stack).filter(Boolean))]
+    return stacks.map(stack => ({
+      name: stack,
+      icon: <Cpu />,
+      count: questions.filter(q => q.stack === stack).length,
+      desc: `Deep dive into ${stack} interview patterns.`
+    }))
+  }, [questions])
 
-  const companies = ['Google', 'Meta', 'Amazon', 'Netflix', 'Microsoft']
+  const companies = useMemo(() => {
+    return [...new Set(questions.map(q => q.company).filter(Boolean))]
+  }, [questions])
 
   return (
     <div className="interview-page-wrapper">
@@ -183,6 +382,7 @@ export default function InterviewClient({ initialQuestions }) {
                         isActive={selectedId === q.id}
                         onClick={() => {
                           setSelectedId(q.id);
+                          router.push(`/interview?q=${q.slug || q.id}`, { scroll: false });
                           setIsMobileListOpen(false);
                           window.scrollTo({ top: 0, behavior: 'smooth' });
                         }}
@@ -215,7 +415,10 @@ export default function InterviewClient({ initialQuestions }) {
                 </div>
 
                 <div className="detail-pane">
-                  <InterviewDetailView q={selectedQuestion} />
+                  <InterviewDetailView 
+                    q={selectedQuestion} 
+                    stats={stats}
+                  />
                 </div>
 
                 <aside className="detail-sidebar hidden xl:block">
@@ -225,16 +428,93 @@ export default function InterviewClient({ initialQuestions }) {
                       <p>Focus on understanding the <strong>why</strong> behind the answer. Companies value clear communication as much as technical skills.</p>
                     </div>
                     <div className="sidebar-card highlight">
-                      <h4>📚 Mastery Check</h4>
-                      <ul className="related-list">
-                        <li>Code Samples</li>
-                        <li>Video Guide</li>
-                        <li>Discuss with Community</li>
-                      </ul>
+                      <div className="mastery-header">
+                        <Sparkles size={18} className="text-accent" />
+                        <h4>Mastery Check</h4>
+                      </div>
+                      
+                      <div className="interaction-stack">
+                        <button 
+                          className={`sidebar-action-btn ${stats.isLiked ? 'active' : ''}`}
+                          onClick={handleLikeToggle}
+                        >
+                          <div className="btn-icon"><ThumbsUp size={18} fill={stats.isLiked ? "currentColor" : "none"} /></div>
+                          <div className="btn-text">
+                            <span>{stats.isLiked ? 'Helpful!' : 'Helpful?'}</span>
+                            <small>{stats.likes} developers found this useful</small>
+                          </div>
+                        </button>
+
+                        <button 
+                          className="sidebar-action-btn"
+                          onClick={() => {
+                            const el = document.getElementById('discussion')
+                            if (el) el.scrollIntoView({ behavior: 'smooth' })
+                          }}
+                        >
+                          <div className="btn-icon"><MessageSquare size={18} /></div>
+                          <div className="btn-text">
+                            <span>Discuss</span>
+                            <small>{stats.comments} community insights</small>
+                          </div>
+                        </button>
+
+                        <div className="sidebar-dual-actions">
+                          <button 
+                            className={`mini-action-btn ${stats.isBookmarked ? 'active' : ''}`}
+                            onClick={handleBookmarkToggle}
+                          >
+                            <Bookmark size={20} fill={stats.isBookmarked ? "currentColor" : "none"} />
+                            <span>{stats.isBookmarked ? 'Saved' : 'Save'}</span>
+                          </button>
+                          <button className="mini-action-btn" onClick={handleShare}>
+                            <Share2 size={20} />
+                            <span>Share</span>
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </aside>
               </div>
+
+              {/* Share Modal */}
+              <AnimatePresence>
+                {shareModalOpen && (
+                  <div className="share-modal-overlay">
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                      className="share-modal"
+                    >
+                      <div className="modal-header">
+                        <h3>Share Question</h3>
+                        <button onClick={() => setShareModalOpen(false)}><X size={20} /></button>
+                      </div>
+                      
+                      <div className="social-grid">
+                        {socialLinks.map(link => (
+                          <a key={link.name} href={link.url} target="_blank" rel="noopener noreferrer" className="social-item">
+                            <div className="icon-wrapper" style={{ background: link.color }}>{link.icon}</div>
+                            <span>{link.name}</span>
+                          </a>
+                        ))}
+                      </div>
+
+                      <div className="copy-section">
+                        <p>Question Link</p>
+                        <div className="copy-box">
+                          <input type="text" readOnly value={currentUrl} />
+                          <button onClick={copyToClipboard} className={copied ? 'copied' : ''}>
+                            {copied ? <Check size={18} /> : <Copy size={18} />}
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  </div>
+                )}
+              </AnimatePresence>
             </motion.div>
           )}
         </AnimatePresence>
@@ -324,9 +604,12 @@ export default function InterviewClient({ initialQuestions }) {
         .related-list li:hover { color: var(--accent); }
 
         .pane-header { padding: 20px; border-bottom: 1px solid var(--border-subtle); background: rgba(255,255,255,0.02); }
-        .mobile-pane-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
-        .mobile-pane-top h3 { font-family: Syne, sans-serif; font-size: 1.2rem; font-weight: 800; margin: 0; }
-        .mobile-pane-top button { background: none; border: 1px solid var(--border-subtle); border-radius: 8px; padding: 4px 12px; color: var(--text-muted); font-size: 0.8rem; font-weight: 600; }
+        .mobile-pane-top { display: none; }
+        @media (max-width: 1024px) {
+          .mobile-pane-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+          .mobile-pane-top h3 { font-family: Syne, sans-serif; font-size: 1.2rem; font-weight: 800; margin: 0; }
+          .mobile-pane-top button { background: none; border: 1px solid var(--border-subtle); border-radius: 8px; padding: 4px 12px; color: var(--text-muted); font-size: 0.8rem; font-weight: 600; }
+        }
 
         .search-box { position: relative; }
         .search-box input {
@@ -388,6 +671,64 @@ export default function InterviewClient({ initialQuestions }) {
           .master-pane.mobile-open { transform: translateY(0); }
           .detail-pane { padding-bottom: 120px; }
         }
+
+        /* Sidebar Action Buttons */
+        .mastery-header { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+        .mastery-header h4 { margin: 0 !important; color: var(--text-primary) !important; font-size: 1rem !important; }
+
+        .interaction-stack { display: flex; flex-direction: column; gap: 12px; }
+        
+        .sidebar-action-btn {
+          width: 100%; display: flex; align-items: center; gap: 16px; padding: 14px;
+          background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: 16px;
+          cursor: pointer; transition: all 0.2s; text-align: left;
+        }
+        .sidebar-action-btn:hover { border-color: var(--accent); background: var(--bg-elevated); transform: translateX(4px); }
+        .sidebar-action-btn.active { border-color: var(--accent); background: rgba(124, 58, 237, 0.08); }
+        .sidebar-action-btn.active .btn-icon { color: var(--accent); }
+        
+        .btn-icon { width: 40px; height: 40px; border-radius: 10px; background: var(--bg-card); display: flex; align-items: center; justify-content: center; color: var(--text-muted); flex-shrink: 0; }
+        .btn-text { display: flex; flex-direction: column; }
+        .btn-text span { font-size: 0.9rem; font-weight: 700; color: var(--text-primary); }
+        .btn-text small { font-size: 0.7rem; color: var(--text-muted); }
+
+        .sidebar-dual-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px; }
+        .mini-action-btn {
+          display: flex; align-items: center; justify-content: center; gap: 8px; height: 48px;
+          background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: 14px;
+          color: var(--text-secondary); font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: all 0.2s;
+        }
+        .mini-action-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--bg-elevated); }
+        .mini-action-btn.active { color: var(--accent); border-color: var(--accent); background: rgba(124, 58, 237, 0.08); }
+
+        /* Share Modal Styles (Moved from DetailView) */
+        .share-modal-overlay {
+          position: fixed; inset: 0; background: rgba(0,0,0,0.6); 
+          backdrop-filter: blur(8px); z-index: 1000; 
+          display: flex; align-items: center; justify-content: center; padding: 20px;
+        }
+        .share-modal {
+          background: var(--bg-card); border: 1px solid var(--border-subtle); 
+          border-radius: 32px; width: 100%; max-width: 400px; padding: 32px;
+          box-shadow: 0 20px 80px rgba(0,0,0,0.3);
+        }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; }
+        .modal-header h3 { font-family: Syne, sans-serif; font-size: 1.5rem; font-weight: 800; color: var(--text-primary); margin: 0; }
+        .modal-header button { background: none; border: none; color: var(--text-muted); cursor: pointer; transition: color 0.2s; }
+        .modal-header button:hover { color: var(--text-primary); }
+        
+        .social-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 40px; }
+        .social-item { display: flex; flex-direction: column; align-items: center; gap: 10px; text-decoration: none; }
+        .icon-wrapper { width: 56px; height: 56px; border-radius: 18px; display: flex; align-items: center; justify-content: center; color: white; transition: transform 0.2s; }
+        .social-item:hover .icon-wrapper { transform: translateY(-5px); }
+        .social-item span { font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); }
+        
+        .copy-section p { font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; }
+        .copy-box { display: flex; gap: 10px; background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 14px; padding: 6px 6px 6px 16px; align-items: center; }
+        .copy-box input { flex: 1; background: none; border: none; color: var(--text-secondary); font-size: 0.9rem; outline: none; }
+        .copy-box button { width: 40px; height: 40px; border-radius: 10px; background: var(--bg-card); border: 1px solid var(--border-subtle); color: var(--accent); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+        .copy-box button.copied { background: #00ffaa; border-color: #00ffaa; color: #000; }
+        .copy-box button:hover:not(.copied) { border-color: var(--accent); background: var(--border-subtle); }
       `}</style>
     </div>
   )

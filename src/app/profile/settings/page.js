@@ -113,7 +113,8 @@ export default function ProfileSettingsPage() {
     if (!user) return
     setLoadingBookmarks(true)
     try {
-      const { data, error } = await supabase
+      // 1. Fetch Article Bookmarks
+      const { data: articleData, error: articleError } = await supabase
         .from('article_bookmarks')
         .select(`
           article_id,
@@ -127,20 +128,41 @@ export default function ProfileSettingsPage() {
         `)
         .eq('user_id', user.id)
 
-      if (error) {
-        console.error('Supabase error fetching bookmarks:', error)
-        throw error
+      if (articleError) {
+        console.error('Error fetching article bookmarks:', articleError)
       }
       
-      // Filter out any bookmarks where the article join failed (null articles)
-      const validBookmarks = data
-        ? data.map(b => b.articles).filter(Boolean)
-        : []
+      // 2. Fetch Interview Bookmarks
+      const { data: interviewData, error: interviewError } = await supabase
+        .from('interview_bookmarks')
+        .select(`
+          question_id,
+          interview_questions:question_id (
+            id,
+            question,
+            answer,
+            created_at
+          )
+        `)
+        .eq('user_id', user.id)
+
+      if (interviewError) {
+        console.error('Error fetching interview bookmarks:', interviewError)
+      }
+      
+      // 3. Combine and Format
+      const combined = [
+        ...(articleData?.map(b => b.articles ? { ...b.articles, type: 'article' } : null) || []),
+        ...(interviewData?.map(b => b.interview_questions ? { ...b.interview_questions, type: 'interview' } : null) || [])
+      ].filter(Boolean)
+
+      // Sort by creation date
+      combined.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
         
-      setBookmarks(validBookmarks)
+      setBookmarks(combined)
     } catch (error) {
-      console.error('Error fetching bookmarks:', error)
-      setMessage({ type: 'error', text: 'Could not load your saved articles.' })
+      console.error('Error in fetchBookmarks:', error)
+      setMessage({ type: 'error', text: 'Could not load your saved content.' })
     } finally {
       setLoadingBookmarks(false)
     }
@@ -398,23 +420,42 @@ export default function ProfileSettingsPage() {
               </form>
             ) : (
               <div className="settings-card">
-                <div className="card-header"><div className="header-icon"><Bookmark size={24} /></div><div className="header-text"><h2>Saved Content</h2><p>Articles you've bookmarked for later.</p></div></div>
+                <div className="card-header"><div className="header-icon"><Bookmark size={24} /></div><div className="header-text"><h2>Saved Content</h2><p>Items you've bookmarked for later.</p></div></div>
                 {loadingBookmarks ? (
                   <div className="loading-state"><Loader2 className="spinner spin" /><p>Retrieving your library...</p></div>
                 ) : bookmarks.length > 0 ? (
                   <div className="bookmarks-grid">
-                    {bookmarks.map(article => (
-                      <Link key={article.id} href={`/articles/${article.slug}`} className="bookmark-item">
+                    {bookmarks.map(item => (
+                      <Link 
+                        key={item.id} 
+                        href={item.type === 'article' ? `/articles/${item.slug}` : `/interview?q=${item.id}`} 
+                        className="bookmark-item"
+                      >
                         <div className="bookmark-content">
-                          <h3>{article.title}</h3>
-                          <p>{article.excerpt?.substring(0, 100)}...</p>
-                          <div className="bookmark-meta"><BookOpen size={12} /><span>Read Article</span><ExternalLink size={12} className="meta-icon" /></div>
+                          <div className={`type-badge ${item.type}`}>
+                            {item.type === 'article' ? 'Article' : 'Interview'}
+                          </div>
+                          <h3>{item.type === 'article' ? item.title : item.question}</h3>
+                          <p>{(item.type === 'article' ? item.excerpt : item.answer)?.substring(0, 100).replace(/<[^>]*>/g, '')}...</p>
+                          <div className="bookmark-meta">
+                            <BookOpen size={12} />
+                            <span>{item.type === 'article' ? 'Read Article' : 'View Question'}</span>
+                            <ExternalLink size={12} className="meta-icon" />
+                          </div>
                         </div>
                       </Link>
                     ))}
                   </div>
                 ) : (
-                  <div className="empty-bookmarks"><div className="empty-icon"><Bookmark size={40} /></div><h3>No Bookmarks Yet</h3><p>Articles you save will appear here for quick access.</p><Link href="/articles" className="btn-primary" style={{ marginTop: '24px' }}>Explore Articles</Link></div>
+                  <div className="empty-bookmarks">
+                    <div className="empty-icon"><Bookmark size={40} /></div>
+                    <h3>No Bookmarks Yet</h3>
+                    <p>Content you save will appear here for quick access.</p>
+                    <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+                      <Link href="/articles" className="btn-secondary" style={{ border: '1px solid var(--border-subtle)', borderRadius: '18px' }}>Articles</Link>
+                      <Link href="/interview" className="btn-primary">Interviews</Link>
+                    </div>
+                  </div>
                 )}
               </div>
             )}
@@ -517,6 +558,13 @@ export default function ProfileSettingsPage() {
         .bookmark-meta span { margin-top: 1px; }
         .meta-icon { opacity: 0.5; transition: transform 0.3s; }
         .bookmark-item:hover .meta-icon { transform: translateX(4px); opacity: 1; }
+
+        .type-badge {
+          display: inline-block; padding: 4px 10px; border-radius: 8px; font-size: 9px; font-weight: 800;
+          text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px;
+        }
+        .type-badge.article { background: rgba(124, 58, 237, 0.1); color: var(--accent); }
+        .type-badge.interview { background: rgba(0, 255, 170, 0.1); color: #00ffaa; }
 
         .empty-bookmarks { text-align: center; padding: 60px 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .empty-icon { width: 80px; height: 80px; border-radius: 24px; background: var(--bg-secondary); display: flex; align-items: center; justify-content: center; color: var(--text-muted); margin-bottom: 24px; opacity: 0.5; }

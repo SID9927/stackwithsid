@@ -7,7 +7,7 @@ export const metadata = {
 }
 
 export default async function EditInterviewPage({ params }) {
-  const { id } = params
+  const { id } = await params
   
   const { data: question } = await supabase
     .from('interview_questions')

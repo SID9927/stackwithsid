@@ -1,6 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
+import MobileSheet from '@/components/ui/MobileSheet'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useEditor, EditorContent, Extension, Mark } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
@@ -17,7 +20,66 @@ import {
   ShieldCheck, Zap, Info, Star, Link2, Link2Off, ChevronDown
 } from 'lucide-react'
 
+// ── useIsMobile ───────────────────────────────────────────────────────────────
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false)
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth <= 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+  return isMobile
+}
+
+// ── ToolbarMenu: floating on desktop, MobileSheet on mobile ──────────────────
+// Use this for ALL toolbar dropdowns instead of bare MobileSheet
+function ToolbarMenu({ open, onClose, title, children, extraClass = '', align = 'left', width = 'auto' }) {
+  const isMobile = useIsMobile()
+  const menuRef = useRef(null)
+
+  useEffect(() => {
+    if (!open || isMobile) return
+    const handler = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) onClose()
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open, isMobile, onClose])
+
+  if (!open) return null
+
+  if (isMobile) {
+    return (
+      <MobileSheet onClose={onClose} title={title} extraClass={extraClass}>
+        {children}
+      </MobileSheet>
+    )
+  }
+
+  // Desktop: floating absolute panel
+  return (
+    <motion.div
+      ref={menuRef}
+      className={`tb-float-menu ${extraClass}`}
+      style={{
+        right: align === 'right' ? 0 : undefined,
+        left: align === 'left' ? 0 : undefined,
+        width: width !== 'auto' ? width : undefined,
+      }}
+      initial={{ opacity: 0, y: -8, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -8, scale: 0.96 }}
+      transition={{ duration: 0.15, ease: 'easeOut' }}
+    >
+      {children}
+    </motion.div>
+  )
+}
+
 // ── Toolbar helpers ──────────────────────────────────────────────────────────
+
+
 
 function Btn({ onClick, active, title, children, danger }) {
   return (
@@ -114,21 +176,57 @@ function insertCallout(editor, type) {
 
 // ── Table picker ─────────────────────────────────────────────────────────────
 function TablePicker({ onInsert }) {
-  const [hover, setHover] = useState({ r: 0, c: 0 })
+  const [selected, setSelected] = useState({ r: 0, c: 0 })
+  const sizes = [
+    { label: '2 × 2', r: 2, c: 2 },
+    { label: '3 × 3', r: 3, c: 3 },
+    { label: '3 × 4', r: 3, c: 4 },
+    { label: '4 × 4', r: 4, c: 4 },
+    { label: '5 × 3', r: 5, c: 3 },
+    { label: '6 × 4', r: 6, c: 4 },
+  ]
+
+  // Mobile: show a simple grid of size buttons
+  if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+    return (
+      <div className="table-picker">
+        <div className="table-picker-label">Select Table Size</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
+          {sizes.map(s => (
+            <button
+              key={s.label}
+              type="button"
+              onMouseDown={e => { e.preventDefault(); onInsert(s.r, s.c) }}
+              style={{
+                padding: '16px 12px', borderRadius: 12, fontSize: '0.95rem', fontWeight: 700,
+                background: 'var(--bg-card)', border: '1px solid var(--border-subtle)',
+                color: 'var(--text-primary)', cursor: 'pointer', fontFamily: 'var(--font-mono)',
+                transition: 'all 0.2s',
+              }}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  // Desktop: hover grid
   const max = 6
   return (
     <div className="table-picker">
       <div className="table-picker-label">
-        {hover.r > 0 ? `${hover.r} × ${hover.c} Table` : 'Insert Table'}
+        {selected.r > 0 ? `${selected.r} × ${selected.c} Table` : 'Insert Table'}
       </div>
       <div className="table-picker-grid">
         {Array.from({ length: max }, (_, ri) =>
           Array.from({ length: max }, (_, ci) => (
             <div
               key={`${ri}-${ci}`}
-              className={`tp-cell ${ri < hover.r && ci < hover.c ? 'lit' : ''}`}
-              onMouseEnter={() => setHover({ r: ri + 1, c: ci + 1 })}
-              onClick={() => onInsert(hover.r, hover.c)}
+              className={`tp-cell ${ri < selected.r && ci < selected.c ? 'lit' : ''}`}
+              onMouseEnter={() => setSelected({ r: ri + 1, c: ci + 1 })}
+              onClick={() => { if (selected.r > 0 && selected.c > 0) onInsert(selected.r, selected.c) }}
             />
           ))
         )}
@@ -160,7 +258,7 @@ function LinkDialog({ onInsert, onClose, initialText }) {
   )
 }
 
-export default function RichTextEditor({ value, onChange }) {
+export default function RichTextEditor({ value, onChange, placeholder = 'Start writing...', label = 'Rich Text Editor', compact = false }) {
   const [lineHeight, setLineHeight] = useState('1.8')
   const [showTablePicker, setShowTablePicker] = useState(false)
   const [showCalloutMenu, setShowCalloutMenu] = useState(false)
@@ -184,7 +282,7 @@ export default function RichTextEditor({ value, onChange }) {
         link: false,
       }),
       Placeholder.configure({
-        placeholder: 'Start writing your article...',
+        placeholder: placeholder || 'Start writing...',
       }),
       TextAlign.configure({
         types: ['heading', 'paragraph', 'table'],
@@ -199,9 +297,17 @@ export default function RichTextEditor({ value, onChange }) {
     ],
     content: value || '',
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
-    editorProps: { attributes: { class: 'rich-editor-content' } },
+    editorProps: { attributes: { class: `rich-editor-content ${compact ? 'compact' : ''}` } },
     immediatelyRender: false,
   })
+
+  // Synchronize content when the value prop changes (crucial for async data loading)
+  useEffect(() => {
+    if (editor && value !== undefined && value !== editor.getHTML()) {
+      // Only set content if it's actually different to prevent cursor jumps
+      editor.commands.setContent(value || '', false)
+    }
+  }, [value, editor])
 
   if (!editor) return null
 
@@ -245,7 +351,7 @@ export default function RichTextEditor({ value, onChange }) {
   }
 
   return (
-    <div className="rich-editor-wrapper" onClick={() => { 
+    <div className={`rich-editor-wrapper ${compact ? 'compact' : ''}`} onClick={() => { 
       setShowTablePicker(false); 
       setShowCalloutMenu(false); 
       setShowLinkDialog(false);
@@ -253,14 +359,16 @@ export default function RichTextEditor({ value, onChange }) {
       setShowFSMenu(false);
     }}>
       {/* ── STICKY COMMAND CENTER ── */}
-      <div className="editor-sticky-header">
-        <div className="editor-top-bar">
-          <div className="editor-status-label">Rich Text Editor</div>
-          <div className="history-group">
-            <Btn onClick={() => editor.chain().focus().undo().run()} title="Undo (Ctrl+Z)"><Undo size={16} /></Btn>
-            <Btn onClick={() => editor.chain().focus().redo().run()} title="Redo (Ctrl+Y)"><Redo size={16} /></Btn>
+      <div className={`editor-sticky-header ${compact ? 'compact' : ''}`}>
+        {!compact && (
+          <div className="editor-top-bar">
+            <div className="editor-status-label">{label}</div>
+            <div className="history-group">
+              <Btn onClick={() => editor.chain().focus().undo().run()} title="Undo (Ctrl+Z)"><Undo size={16} /></Btn>
+              <Btn onClick={() => editor.chain().focus().redo().run()} title="Redo (Ctrl+Y)"><Redo size={16} /></Btn>
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="editor-toolbar" onClick={e => e.stopPropagation()}>
 
@@ -271,34 +379,11 @@ export default function RichTextEditor({ value, onChange }) {
              editor.isActive('heading', { level: 3 }) ? <span className="tb-text">H3</span> : 
              <span className="tb-text">¶</span>}
           </Btn>
-          {showHeadingMenu && (
-            <div className="tb-popover heading-mini-toolbar">
-              <button
-                type="button"
-                className={`tb-btn ${editor.isActive('heading', { level: 2 }) ? 'active' : ''}`}
-                onMouseDown={e => { e.preventDefault(); editor.chain().focus().toggleHeading({ level: 2 }).run(); setShowHeadingMenu(false); }}
-                title="Heading 2"
-              >
-                <span className="tb-text">H2</span>
-              </button>
-              <button
-                type="button"
-                className={`tb-btn ${editor.isActive('heading', { level: 3 }) ? 'active' : ''}`}
-                onMouseDown={e => { e.preventDefault(); editor.chain().focus().toggleHeading({ level: 3 }).run(); setShowHeadingMenu(false); }}
-                title="Heading 3"
-              >
-                <span className="tb-text">H3</span>
-              </button>
-              <button
-                type="button"
-                className={`tb-btn ${editor.isActive('paragraph') ? 'active' : ''}`}
-                onMouseDown={e => { e.preventDefault(); editor.chain().focus().setParagraph().run(); setShowHeadingMenu(false); }}
-                title="Paragraph"
-              >
-                <span className="tb-text">¶</span>
-              </button>
-            </div>
-          )}
+          <ToolbarMenu open={showHeadingMenu} onClose={() => setShowHeadingMenu(false)} title="Text Style" extraClass="tb-row-menu">
+            <button type="button" className={`tb-btn ${editor.isActive('heading', { level: 2 }) ? 'active' : ''}`} onMouseDown={e => { e.preventDefault(); editor.chain().focus().toggleHeading({ level: 2 }).run(); setShowHeadingMenu(false); }} title="Heading 2"><span className="tb-text">H2</span></button>
+            <button type="button" className={`tb-btn ${editor.isActive('heading', { level: 3 }) ? 'active' : ''}`} onMouseDown={e => { e.preventDefault(); editor.chain().focus().toggleHeading({ level: 3 }).run(); setShowHeadingMenu(false); }} title="Heading 3"><span className="tb-text">H3</span></button>
+            <button type="button" className={`tb-btn ${editor.isActive('paragraph') ? 'active' : ''}`} onMouseDown={e => { e.preventDefault(); editor.chain().focus().setParagraph().run(); setShowHeadingMenu(false); }} title="Paragraph"><span className="tb-text">¶</span></button>
+          </ToolbarMenu>
         </div>
 
         <Divider />
@@ -311,34 +396,11 @@ export default function RichTextEditor({ value, onChange }) {
              editor.isActive('strike') ? <Strikethrough size={16} /> :
              <Bold size={16} />}
           </Btn>
-          {showInlineMenu && (
-            <div className="tb-popover align-mini-toolbar">
-              <button
-                type="button"
-                className={`tb-btn ${editor.isActive('bold') ? 'active' : ''}`}
-                onMouseDown={e => { e.preventDefault(); editor.chain().focus().toggleBold().run(); setShowInlineMenu(false); }}
-                title="Bold (Ctrl+B)"
-              >
-                <Bold size={16} />
-              </button>
-              <button
-                type="button"
-                className={`tb-btn ${editor.isActive('italic') ? 'active' : ''}`}
-                onMouseDown={e => { e.preventDefault(); editor.chain().focus().toggleItalic().run(); setShowInlineMenu(false); }}
-                title="Italic (Ctrl+I)"
-              >
-                <Italic size={16} />
-              </button>
-              <button
-                type="button"
-                className={`tb-btn ${editor.isActive('strike') ? 'active' : ''}`}
-                onMouseDown={e => { e.preventDefault(); editor.chain().focus().toggleStrike().run(); setShowInlineMenu(false); }}
-                title="Strikethrough"
-              >
-                <Strikethrough size={16} />
-              </button>
-            </div>
-          )}
+          <ToolbarMenu open={showInlineMenu} onClose={() => setShowInlineMenu(false)} title="Inline Formatting" extraClass="tb-row-menu">
+            <button type="button" className={`tb-btn ${editor.isActive('bold') ? 'active' : ''}`} onMouseDown={e => { e.preventDefault(); editor.chain().focus().toggleBold().run(); setShowInlineMenu(false); }} title="Bold"><Bold size={16} /></button>
+            <button type="button" className={`tb-btn ${editor.isActive('italic') ? 'active' : ''}`} onMouseDown={e => { e.preventDefault(); editor.chain().focus().toggleItalic().run(); setShowInlineMenu(false); }} title="Italic"><Italic size={16} /></button>
+            <button type="button" className={`tb-btn ${editor.isActive('strike') ? 'active' : ''}`} onMouseDown={e => { e.preventDefault(); editor.chain().focus().toggleStrike().run(); setShowInlineMenu(false); }} title="Strikethrough"><Strikethrough size={16} /></button>
+          </ToolbarMenu>
         </div>
 
         <Divider />
@@ -351,30 +413,16 @@ export default function RichTextEditor({ value, onChange }) {
              editor.isActive({ textAlign: 'justify' }) ? <AlignJustify size={16} /> : 
              <AlignLeft size={16} />}
           </Btn>
-          {showAlignMenu && (
-            <div className="tb-popover align-mini-toolbar">
-              {[
-                { key: 'left', icon: <AlignLeft size={16} />, title: 'Align Left' },
-                { key: 'center', icon: <AlignCenter size={16} />, title: 'Align Center' },
-                { key: 'right', icon: <AlignRight size={16} />, title: 'Align Right' },
-                { key: 'justify', icon: <AlignJustify size={16} />, title: 'Justify' },
-              ].map(item => (
-                <button
-                  key={item.key}
-                  type="button"
-                  className={`tb-btn ${editor.isActive({ textAlign: item.key }) ? 'active' : ''}`}
-                  onMouseDown={e => { 
-                    e.preventDefault(); 
-                    editor.chain().focus().setTextAlign(item.key).run(); 
-                    setShowAlignMenu(false); 
-                  }}
-                  title={item.title}
-                >
-                  {item.icon}
-                </button>
-              ))}
-            </div>
-          )}
+          <ToolbarMenu open={showAlignMenu} onClose={() => setShowAlignMenu(false)} title="Alignment" extraClass="tb-row-menu">
+            {[
+              { key: 'left', icon: <AlignLeft size={16} />, title: 'Align Left' },
+              { key: 'center', icon: <AlignCenter size={16} />, title: 'Align Center' },
+              { key: 'right', icon: <AlignRight size={16} />, title: 'Align Right' },
+              { key: 'justify', icon: <AlignJustify size={16} />, title: 'Justify' },
+            ].map(item => (
+              <button key={item.key} type="button" className={`tb-btn ${editor.isActive({ textAlign: item.key }) ? 'active' : ''}`} onMouseDown={e => { e.preventDefault(); editor.chain().focus().setTextAlign(item.key).run(); setShowAlignMenu(false); }} title={item.title}>{item.icon}</button>
+            ))}
+          </ToolbarMenu>
         </div>
 
         <Divider />
@@ -389,20 +437,11 @@ export default function RichTextEditor({ value, onChange }) {
           >
             {fontSize === 'default' ? 'Auto' : fontSize} <ChevronDown size={14} />
           </button>
-          {showFSMenu && (
-            <div className="tb-popover fs-menu">
-              {['default', '12px', '14px', '16px', '18px', '20px', '24px', '32px', '48px'].map(v => (
-                <button
-                  key={v}
-                  type="button"
-                  className={`menu-option ${fontSize === v ? 'active' : ''}`}
-                  onMouseDown={e => { e.preventDefault(); applyFS(v); setShowFSMenu(false); }}
-                >
-                  {v === 'default' ? 'Reset' : v}
-                </button>
-              ))}
-            </div>
-          )}
+          <ToolbarMenu open={showFSMenu} onClose={() => setShowFSMenu(false)} title="Font Size" extraClass="tb-list-menu" width="120px">
+            {['default', '12px', '14px', '16px', '18px', '20px', '24px', '32px', '48px'].map(v => (
+              <button key={v} type="button" className={`tb-list-option ${fontSize === v ? 'active' : ''}`} onMouseDown={e => { e.preventDefault(); applyFS(v); setShowFSMenu(false); }}>{v === 'default' ? 'Reset' : v}</button>
+            ))}
+          </ToolbarMenu>
         </div>
 
         <div className="tb-group" style={{ position: 'relative' }}>
@@ -414,20 +453,11 @@ export default function RichTextEditor({ value, onChange }) {
           >
             {lineHeight}× <ChevronDown size={14} />
           </button>
-          {showLHMenu && (
-            <div className="tb-popover lh-menu">
-              {['1', '1.2', '1.4', '1.6', '1.8', '2', '2.4', '3'].map(v => (
-                <button
-                  key={v}
-                  type="button"
-                  className={`menu-option ${lineHeight === v ? 'active' : ''}`}
-                  onMouseDown={e => { e.preventDefault(); applyLH(v); setShowLHMenu(false); }}
-                >
-                  {v}×
-                </button>
-              ))}
-            </div>
-          )}
+          <ToolbarMenu open={showLHMenu} onClose={() => setShowLHMenu(false)} title="Line Height" extraClass="tb-list-menu" width="100px">
+            {['1', '1.2', '1.4', '1.6', '1.8', '2', '2.4', '3'].map(v => (
+              <button key={v} type="button" className={`tb-list-option ${lineHeight === v ? 'active' : ''}`} onMouseDown={e => { e.preventDefault(); applyLH(v); setShowLHMenu(false); }}>{v}×</button>
+            ))}
+          </ToolbarMenu>
         </div>
 
         <Divider />
@@ -437,26 +467,10 @@ export default function RichTextEditor({ value, onChange }) {
           <Btn onClick={() => { setShowListMenu(!showListMenu); setShowAlignMenu(false); setShowFSMenu(false); setShowLHMenu(false); setShowTablePicker(false); setShowCalloutMenu(false); setShowLinkDialog(false); }} active={showListMenu} title="List Options">
             {editor.isActive('orderedList') ? <ListOrdered size={16} /> : <List size={16} />}
           </Btn>
-          {showListMenu && (
-            <div className="tb-popover align-mini-toolbar">
-              <button
-                type="button"
-                className={`tb-btn ${editor.isActive('bulletList') ? 'active' : ''}`}
-                onMouseDown={e => { e.preventDefault(); editor.chain().focus().toggleBulletList().run(); setShowListMenu(false); }}
-                title="Bullet List"
-              >
-                <List size={16} />
-              </button>
-              <button
-                type="button"
-                className={`tb-btn ${editor.isActive('orderedList') ? 'active' : ''}`}
-                onMouseDown={e => { e.preventDefault(); editor.chain().focus().toggleOrderedList().run(); setShowListMenu(false); }}
-                title="Numbered List"
-              >
-                <ListOrdered size={16} />
-              </button>
-            </div>
-          )}
+          <ToolbarMenu open={showListMenu} onClose={() => setShowListMenu(false)} title="Lists" extraClass="tb-row-menu">
+            <button type="button" className={`tb-btn ${editor.isActive('bulletList') ? 'active' : ''}`} onMouseDown={e => { e.preventDefault(); editor.chain().focus().toggleBulletList().run(); setShowListMenu(false); }} title="Bullet List"><List size={16} /></button>
+            <button type="button" className={`tb-btn ${editor.isActive('orderedList') ? 'active' : ''}`} onMouseDown={e => { e.preventDefault(); editor.chain().focus().toggleOrderedList().run(); setShowListMenu(false); }} title="Numbered List"><ListOrdered size={16} /></button>
+          </ToolbarMenu>
         </div>
 
         <Divider />
@@ -478,11 +492,9 @@ export default function RichTextEditor({ value, onChange }) {
           <Btn onClick={() => { setShowTablePicker(p => !p); setShowCalloutMenu(false) }} active={showTablePicker} title="Insert Table">
             <TableIcon size={16} />
           </Btn>
-          {showTablePicker && (
-            <div className="tb-popover" onClick={e => e.stopPropagation()}>
-              <TablePicker onInsert={insertTable} />
-            </div>
-          )}
+          <ToolbarMenu open={showTablePicker} onClose={() => setShowTablePicker(false)} title="Insert Table">
+            <TablePicker onInsert={insertTable} />
+          </ToolbarMenu>
         </div>
 
         {/* Table controls (visible when cursor is inside a table) */}
@@ -510,30 +522,19 @@ export default function RichTextEditor({ value, onChange }) {
           <Btn onClick={() => { setShowCalloutMenu(p => !p); setShowTablePicker(false) }} active={showCalloutMenu} title="Insert Callout Card">
             <ShieldCheck size={16} />
           </Btn>
-          {showCalloutMenu && (
-            <div className="tb-popover callout-menu" onClick={e => e.stopPropagation()}>
-              <div className="callout-menu-header">Insert Technical Card</div>
-              {[
-                { key: 'success', icon: <ShieldCheck size={18} />, label: 'Core Benefits', desc: 'Positive outcomes & features', cls: 'tco-success' },
-                { key: 'info', icon: <Info size={18} />, label: 'Information', desc: 'General notes & context', cls: 'tco-info' },
-                { key: 'tip', icon: <Zap size={18} />, label: 'Pro Tip', desc: 'Best practices & shortcuts', cls: 'tco-tip' },
-                { key: 'warning', icon: <Star size={18} />, label: 'Warning', desc: 'Critical alerts & cautions', cls: 'tco-warning' },
-              ].map(item => (
-                <button
-                  key={item.key}
-                  type="button"
-                  className={`tech-card-option ${item.cls}`}
-                  onMouseDown={e => { e.preventDefault(); insertCallout(editor, item.key); setShowCalloutMenu(false) }}
-                >
-                  <div className="tco-icon">{item.icon}</div>
-                  <div className="tco-body">
-                    <span className="tco-label">{item.label}</span>
-                    <span className="tco-desc">{item.desc}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
+          <ToolbarMenu open={showCalloutMenu} onClose={() => setShowCalloutMenu(false)} title="Insert Card" width="240px">
+            {[
+              { key: 'success', icon: <ShieldCheck size={18} />, label: 'Core Benefits', desc: 'Positive outcomes & features', cls: 'tco-success' },
+              { key: 'info', icon: <Info size={18} />, label: 'Information', desc: 'General notes & context', cls: 'tco-info' },
+              { key: 'tip', icon: <Zap size={18} />, label: 'Pro Tip', desc: 'Best practices & shortcuts', cls: 'tco-tip' },
+              { key: 'warning', icon: <Star size={18} />, label: 'Warning', desc: 'Critical alerts & cautions', cls: 'tco-warning' },
+            ].map(item => (
+              <button key={item.key} type="button" className={`tech-card-option ${item.cls}`} onMouseDown={e => { e.preventDefault(); insertCallout(editor, item.key); setShowCalloutMenu(false) }}>
+                <div className="tco-icon">{item.icon}</div>
+                <div className="tco-body"><span className="tco-label">{item.label}</span><span className="tco-desc">{item.desc}</span></div>
+              </button>
+            ))}
+          </ToolbarMenu>
         </div>
 
         <Divider />
@@ -548,15 +549,13 @@ export default function RichTextEditor({ value, onChange }) {
               <Link2Off size={16} />
             </Btn>
           )}
-          {showLinkDialog && (
-            <div className="tb-popover link-popover" onClick={e => e.stopPropagation()}>
-              <LinkDialog
-                initialText={selectedText}
-                onInsert={handleInsertLink}
-                onClose={() => setShowLinkDialog(false)}
-              />
-            </div>
-          )}
+          <ToolbarMenu open={showLinkDialog} onClose={() => setShowLinkDialog(false)} title="Insert Link" width="280px" align="right">
+            <LinkDialog
+              initialText={selectedText}
+              onInsert={handleInsertLink}
+              onClose={() => setShowLinkDialog(false)}
+            />
+          </ToolbarMenu>
         </div>
       </div> {/* End editor-sticky-header */}
       </div>
@@ -571,11 +570,21 @@ export default function RichTextEditor({ value, onChange }) {
           border-radius: 20px; overflow: visible;
           border: 1px solid var(--border-subtle);
           background: var(--bg-secondary);
-          transition: border-color 0.3s;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          max-width: 100%;
+        }
+        .rich-editor-wrapper.compact {
+          border-radius: 16px;
+          background: rgba(124, 58, 237, 0.02);
         }
         .rich-editor-wrapper:focus-within {
           border-color: var(--accent);
           box-shadow: 0 0 0 4px rgba(124,58,237,0.08);
+          background: var(--bg-primary);
+        }
+        .rich-editor-wrapper.compact:focus-within {
+          background: var(--bg-primary);
+          border-color: var(--accent-soft);
         }
 
         /* Top Bar / History */
@@ -591,24 +600,111 @@ export default function RichTextEditor({ value, onChange }) {
 
         /* Sticky Command Center (Header + Toolbar) */
         .editor-sticky-header {
-          position: sticky; top: 72px; z-index: 30;
+          position: sticky; top: var(--nav-height, 72px); z-index: 30;
           background: var(--bg-elevated);
           border-bottom: 1px solid var(--border-subtle);
           border-radius: 20px 20px 0 0;
           box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          max-width: 100%;
+          overflow: visible; /* Must be visible so floating menus aren't clipped */
+        }
+        .editor-sticky-header.compact {
+          border-radius: 0;
+          border-top: 1px solid var(--border-subtle);
+          box-shadow: none;
+          background: var(--bg-secondary);
+        }
+        .editor-sticky-header.compact .editor-toolbar {
+          padding: 6px 10px;
         }
 
+        /* Clip only the top bar (label + undo/redo) to keep border-radius clean */
         .editor-top-bar {
           display: flex; align-items: center; justify-content: space-between;
           padding: 10px 16px; border-bottom: 1px solid rgba(255,255,255,0.03);
+          border-radius: 20px 20px 0 0;
+          overflow: hidden;
         }
 
         .editor-toolbar {
           display: flex; align-items: center; flex-wrap: wrap;
           gap: 2px; padding: 10px 12px;
+          position: relative;
+          overflow: visible; /* Allow floating menus to escape */
         }
-        .tb-group { display: flex; align-items: center; gap: 2px; }
-        .tb-div { width: 1px; height: 22px; background: var(--border-subtle); margin: 0 4px; flex-shrink:0; }
+
+        @media (max-width: 768px) {
+          .editor-sticky-header {
+            top: var(--nav-height, 64px);
+            border-radius: 12px 12px 0 0;
+          }
+          .editor-toolbar {
+            flex-wrap: nowrap !important;
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch;
+            padding: 10px 12px;
+            gap: 4px;
+            scrollbar-width: none;
+          }
+          .editor-toolbar::-webkit-scrollbar { display: none; }
+          .tb-div { height: 20px; margin: 0 2px; }
+          .tb-group { flex-shrink: 0; }
+        }
+        
+        .tb-group { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+        .tb-div { width: 1px; height: 22px; background: var(--border-subtle); margin: 0 4px; flex-shrink: 0; }
+
+        /* ── Floating Toolbar Menus (Desktop) ─────────────────────────── */
+        .tb-float-menu {
+          position: absolute;
+          top: calc(100% + 6px);
+          z-index: 9999;
+          background: var(--bg-elevated);
+          border: 1px solid var(--border-subtle);
+          border-radius: 14px;
+          padding: 6px;
+          box-shadow: 0 8px 32px rgba(0,0,0,0.28), 0 2px 8px rgba(0,0,0,0.12);
+          min-width: 60px;
+          overflow: hidden;
+        }
+
+        /* Row layout: icon buttons side by side (Heading, Align, Lists, Inline) */
+        .tb-float-menu.tb-row-menu {
+          display: flex;
+          flex-direction: row;
+          gap: 2px;
+          padding: 4px;
+          width: max-content;
+        }
+
+        /* List layout: vertical text options (Font Size, Line Height) */
+        .tb-float-menu.tb-list-menu {
+          display: flex;
+          flex-direction: column;
+          gap: 0;
+          padding: 4px;
+        }
+
+        .tb-list-option {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 100%;
+          padding: 7px 12px;
+          border-radius: 8px;
+          border: none;
+          background: transparent;
+          color: var(--text-secondary);
+          font-size: 0.82rem;
+          font-weight: 500;
+          font-family: var(--font-mono);
+          cursor: pointer;
+          transition: all 0.15s;
+          white-space: nowrap;
+        }
+        .tb-list-option:hover { background: rgba(124,58,237,0.1); color: var(--accent); }
+        .tb-list-option.active { background: rgba(124,58,237,0.18); color: var(--accent); font-weight: 700; }
 
         .tb-btn {
           display: flex; align-items: center; justify-content: center;
@@ -622,14 +718,8 @@ export default function RichTextEditor({ value, onChange }) {
         .tb-btn.danger:hover { color: #ef4444; background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); }
         .tb-text { font-family: var(--font-mono); font-weight: 700; font-size: 0.78rem; }
 
-        /* Popovers */
-        .tb-popover {
-          position: absolute; top: calc(100% + 8px); left: 0;
-          background: var(--bg-elevated); border: 1px solid var(--border-subtle);
-          border-radius: 14px; padding: 12px;
-          box-shadow: 0 16px 48px rgba(0,0,0,0.35);
-          z-index: 200; min-width: 200px;
-        }
+
+
 
         /* Table Picker */
         .table-picker-label {
@@ -639,6 +729,15 @@ export default function RichTextEditor({ value, onChange }) {
         .table-picker-grid {
           display: grid; grid-template-columns: repeat(6, 24px);
           gap: 3px;
+        }
+        @media (max-width: 768px) {
+          .table-picker-grid {
+            grid-template-columns: repeat(6, 40px);
+            gap: 8px;
+            justify-content: center;
+          }
+          .tp-cell { width: 40px; height: 40px; }
+          .table-picker-label { font-size: 1rem; margin-bottom: 20px; }
         }
         .tp-cell {
           width: 24px; height: 24px; border-radius: 4px;
@@ -662,13 +761,57 @@ export default function RichTextEditor({ value, onChange }) {
           width: max-content !important; min-width: unset !important;
           left: 0 !important; transform: none !important;
         }
+        @media (max-width: 768px) {
+          .align-mini-toolbar, .heading-mini-toolbar {
+            width: 100% !important;
+            justify-content: center;
+            left: 0 !important;
+            transform: none !important;
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+          }
+        }
         .fs-menu { min-width: 90px; }
+
+        /* Bottom sheet animation */
+        @keyframes sheetSlideUp {
+          from { transform: translateY(100%); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+
+        /* Row layout for small option sets (alignment, heading) in the sheet */
+        .sheet-row-items {
+          display: flex; flex-direction: row; gap: 8px; 
+          justify-content: center; flex-wrap: wrap;
+        }
+        .sheet-row-items .tb-btn {
+          width: 52px !important; height: 52px !important;
+          border-radius: 12px !important;
+          border: 1px solid var(--border-subtle) !important;
+        }
+
         .menu-option {
           display: flex; align-items: center; justify-content: center;
           width: 100%; padding: 8px; border-radius: 6px;
           border: none; background: transparent; color: var(--text-muted);
           font-size: 0.85rem; font-weight: 500; cursor: pointer;
           transition: all 0.2s;
+        }
+        @media (max-width: 768px) {
+          .menu-option {
+            padding: 14px 8px;
+            font-size: 1rem;
+            border-radius: 12px;
+            border: 1px solid var(--border-subtle);
+            background: var(--bg-card);
+            color: var(--text-secondary);
+          }
+          .menu-option.active {
+            background: rgba(124, 58, 237, 0.15) !important;
+            color: var(--accent) !important;
+            border-color: var(--accent-soft) !important;
+          }
         }
         .menu-option:hover { background: rgba(124,58,237,0.1); color: var(--accent); }
         .menu-option.active { background: rgba(124,58,237,0.15); color: var(--accent); }
@@ -699,6 +842,16 @@ export default function RichTextEditor({ value, onChange }) {
           margin: 0 !important; flex-shrink: 0 !important;
         }
         .tech-card-option:hover { background: rgba(255,255,255,0.04) !important; }
+        @media (max-width: 768px) {
+          .tech-card-option {
+            padding: 14px 16px !important;
+            border: 1px solid var(--border-subtle) !important;
+            background: var(--bg-card) !important;
+            border-radius: 16px !important;
+            margin-bottom: 6px !important;
+          }
+          .callout-menu-header { display: none; } /* Title shown by MobileSheet itself */
+        }
         
         .tco-icon { 
           display: flex !important; align-items: center !important; justify-content: center !important;
@@ -735,6 +888,24 @@ export default function RichTextEditor({ value, onChange }) {
           color: var(--text-secondary); line-height: 1.8;
           font-size: 1.1rem; font-family: "DM Sans", sans-serif;
           border-radius: 0 0 20px 20px;
+          transition: all 0.3s;
+          word-break: break-word;
+          overflow-wrap: break-word;
+        }
+        .rich-editor-content.compact {
+          min-height: 250px;
+          padding: 24px;
+          border-radius: 0 0 16px 16px;
+        }
+        @media (max-width: 768px) {
+          .rich-editor-content {
+            padding: 20px 16px;
+            font-size: 1rem;
+          }
+          .rich-editor-content.compact {
+            min-height: 300px;
+            padding: 18px 16px;
+          }
         }
         .rich-editor-content p { margin-bottom: 20px; }
         .rich-editor-content p.is-editor-empty:first-child::before {
@@ -878,6 +1049,44 @@ export default function RichTextEditor({ value, onChange }) {
         .link-insert {
           flex: 2; padding: 8px; border-radius: 8px; border: none;
           background: var(--gradient-purple); color: white; font-size: 0.82rem; font-weight: 700; cursor: pointer;
+        }
+        /* Mobile sheet backdrop */
+        .mobile-sheet-backdrop {
+          display: none;
+        }
+        @media (max-width: 768px) {
+          .mobile-sheet-backdrop {
+            display: block;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            z-index: 99998;
+          }
+
+          /* Larger touch-friendly inputs in link dialog */
+          .link-field input {
+            font-size: 1rem !important;
+            padding: 14px 16px !important;
+            border-radius: 12px !important;
+          }
+          .link-dialog-title {
+            font-size: 1rem !important;
+            margin-bottom: 20px !important;
+          }
+          .link-field label {
+            font-size: 0.9rem !important;
+            margin-bottom: 8px !important;
+          }
+          .link-actions {
+            margin-top: 20px !important;
+            gap: 12px !important;
+          }
+          .link-cancel, .link-insert {
+            padding: 14px !important;
+            font-size: 0.95rem !important;
+            border-radius: 12px !important;
+          }
         }
       `}</style>
     </div>

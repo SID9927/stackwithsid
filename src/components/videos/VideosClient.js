@@ -148,9 +148,41 @@ export default function VideosClient({ videos }) {
       )}
 
       {videos.length === 0 && (
-        <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '80px 0' }}>
-          No videos yet. Check back soon!
-        </div>
+        <RevealOnScroll delay={0.2}>
+          <div style={{ 
+            textAlign: 'center', 
+            padding: '80px 20px',
+            background: 'rgba(124, 58, 237, 0.03)',
+            border: '1px dashed var(--border-subtle)',
+            borderRadius: 32,
+            marginTop: 20,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <div style={{ 
+              width: 54, height: 54, borderRadius: 16, 
+              background: 'rgba(124, 58, 237, 0.1)', 
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              marginBottom: 20, color: 'var(--accent)'
+            }}>
+              <Play size={24} fill="currentColor" />
+            </div>
+            <h2 style={{ 
+              fontFamily: 'Syne, sans-serif',
+              fontSize: 'clamp(1.5rem, 3vw, 2.2rem)',
+              fontWeight: 800,
+              marginBottom: 12,
+              color: 'var(--text-primary)'
+            }}>
+              Curating New Lessons
+            </h2>
+            <p style={{ color: 'var(--text-muted)', maxWidth: 480, fontSize: '1.05rem', lineHeight: 1.6, margin: '0 auto' }}>
+              I'm currently recording and editing deep-dive technical tutorials. High-quality content takes time to cook—stay tuned for the first drop!
+            </p>
+          </div>
+        </RevealOnScroll>
       )}
     </div>
   )

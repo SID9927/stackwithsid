@@ -5,8 +5,9 @@ import { supabase } from '@/lib/supabase'
 import { 
   Plus, 
   Search, 
-  Edit3, 
+  Pencil, 
   Trash2, 
+  Eye,
   ExternalLink,
   ChevronRight,
   Filter
@@ -49,7 +50,7 @@ export default function AdminInterviews() {
     <div className="admin-page">
       <header className="page-header">
         <div>
-          <h1>Interview Mastery</h1>
+          <h1>Interview Management</h1>
           <p>Manage your bank of expert questions and pedagogical answers.</p>
         </div>
         <Link href="/admin/interviews/new" className="admin-btn btn-primary">
@@ -102,8 +103,11 @@ export default function AdminInterviews() {
                   <td><span className="company-text">{q.company || '—'}</span></td>
                   <td style={{ textAlign: 'right' }}>
                     <div className="actions-cell">
+                      <Link href={`/interview?q=${q.id}`} target="_blank" className="icon-action view">
+                        <Eye size={18} />
+                      </Link>
                       <Link href={`/admin/interviews/${q.id}`} className="icon-action edit">
-                        <Edit3 size={18} />
+                        <Pencil size={18} />
                       </Link>
                       <button onClick={() => handleDelete(q.id)} className="icon-action delete">
                         <Trash2 size={18} />
@@ -122,12 +126,24 @@ export default function AdminInterviews() {
 
       <style jsx>{`
         .admin-page { max-width: 1200px; margin: 0 auto; }
-        .page-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 32px; }
+        @media (max-width: 768px) {
+          .admin-page { padding: 0 16px; }
+        }
+        .page-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 32px; gap: 20px; }
+        @media (max-width: 768px) {
+          .page-header { flex-direction: column; align-items: flex-start; }
+          .page-header h1 { font-size: 1.5rem; }
+          .admin-btn.btn-primary { width: 100%; justify-content: center; }
+        }
         .page-header h1 { font-family: Syne, sans-serif; font-size: 1.8rem; font-weight: 800; margin-bottom: 4px; }
         .page-header p { color: var(--text-muted); font-size: 0.95rem; }
-
+        
         .table-actions {
           padding: 16px; margin-bottom: 24px; display: flex; gap: 16px;
+        }
+        @media (max-width: 768px) {
+          .table-actions { flex-direction: column; padding: 12px; }
+          .admin-btn.btn-secondary { width: 100%; justify-content: center; }
         }
         .search-box {
           flex: 1; position: relative;
@@ -140,6 +156,10 @@ export default function AdminInterviews() {
         .search-box :global(svg) { position: absolute; left: 14px; top: 13px; color: var(--text-muted); }
 
         .table-wrapper { overflow: hidden; }
+        @media (max-width: 768px) {
+          .table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+          .admin-table { min-width: 900px; }
+        }
         
         .q-cell { max-width: 400px; }
         .q-text { 
@@ -161,15 +181,26 @@ export default function AdminInterviews() {
 
         .company-text { color: var(--text-muted); font-weight: 500; }
 
-        .actions-cell { display: flex; gap: 8px; justify-content: flex-end; }
+        .actions-cell { display: flex; gap: 8px; justify-content: flex-end; align-items: center; flex-wrap: nowrap; }
         .icon-action {
-          width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center;
-          background: var(--bg-card); border: 1px solid var(--border-subtle); color: var(--text-muted);
-          cursor: pointer; transition: all 0.2s;
+          width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center;
+          background: transparent; border: none; color: var(--text-muted);
+          cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+          padding: 0; text-decoration: none;
         }
-        .icon-action:hover { transform: scale(1.1); }
-        .icon-action.edit:hover { background: rgba(124, 58, 237, 0.1); color: var(--accent-soft); border-color: var(--accent-soft); }
-        .icon-action.delete:hover { background: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: #ef4444; }
+        .icon-action:hover { 
+          transform: translateY(-2px); 
+          color: var(--accent); 
+          background: rgba(124, 58, 237, 0.1); 
+        }
+        .icon-action.view:hover, .icon-action.edit:hover {
+          color: var(--accent);
+          background: rgba(124, 58, 237, 0.12);
+        }
+        .icon-action.delete:hover { 
+          color: #ef4444; 
+          background: rgba(239, 68, 68, 0.12); 
+        }
 
         .loading-state, .empty-state { padding: 80px; text-align: center; color: var(--text-muted); font-size: 0.9rem; }
       `}</style>

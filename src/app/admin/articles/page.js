@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { 
   Plus, 
   Search, 
-  Edit3, 
+  Pencil, 
   Trash2, 
   Eye,
   Calendar,
@@ -50,7 +50,7 @@ export default function AdminArticles() {
     <div className="admin-page">
       <header className="page-header">
         <div>
-          <h1>Article Mastery</h1>
+          <h1>Article Management</h1>
           <p>Create and refine deep-tech guides for the community.</p>
         </div>
         <Link href="/admin/articles/new" className="admin-btn btn-primary">
@@ -109,7 +109,7 @@ export default function AdminArticles() {
                         <Eye size={18} />
                       </Link>
                       <Link href={`/admin/articles/${a.id}`} className="icon-action edit">
-                        <Edit3 size={18} />
+                        <Pencil size={18} />
                       </Link>
                       <button onClick={() => handleDelete(a.id)} className="icon-action delete">
                         <Trash2 size={18} />
@@ -128,11 +128,22 @@ export default function AdminArticles() {
 
       <style jsx>{`
         .admin-page { max-width: 1200px; margin: 0 auto; }
-        .page-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 32px; }
+        @media (max-width: 768px) {
+          .admin-page { padding: 0 16px; }
+        }
+        .page-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 32px; gap: 20px; }
+        @media (max-width: 768px) {
+          .page-header { flex-direction: column; align-items: flex-start; }
+          .page-header h1 { font-size: 1.5rem; }
+          .admin-btn.btn-primary { width: 100%; justify-content: center; }
+        }
         .page-header h1 { font-family: Syne, sans-serif; font-size: 1.8rem; font-weight: 800; margin-bottom: 4px; }
         .page-header p { color: var(--text-muted); font-size: 0.95rem; }
-
+ 
         .table-actions { padding: 16px; margin-bottom: 24px; }
+        @media (max-width: 768px) {
+          .table-actions { padding: 12px; }
+        }
         .search-box { position: relative; }
         .search-box input {
           width: 100%; height: 44px; background: var(--bg-secondary); border: 1px solid var(--border-subtle);
@@ -140,6 +151,12 @@ export default function AdminArticles() {
         }
         .search-box input:focus { border-color: var(--accent); }
         .search-box :global(svg) { position: absolute; left: 14px; top: 13px; color: var(--text-muted); }
+        
+        .table-wrapper { overflow: hidden; }
+        @media (max-width: 768px) {
+          .table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+          .admin-table { min-width: 850px; }
+        }
 
         .title-cell { max-width: 380px; }
         .title-info { display: flex; flex-direction: column; }
@@ -154,16 +171,26 @@ export default function AdminArticles() {
 
         .date-text, .read-text { font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
 
-        .actions-cell { display: flex; gap: 8px; justify-content: flex-end; }
+        .actions-cell { display: flex; gap: 8px; justify-content: flex-end; align-items: center; flex-wrap: nowrap; }
         .icon-action {
-          width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center;
-          background: var(--bg-card); border: 1px solid var(--border-subtle); color: var(--text-muted);
-          cursor: pointer; transition: all 0.2s;
+          width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center;
+          background: transparent; border: none; color: var(--text-muted);
+          cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+          padding: 0; text-decoration: none;
         }
-        .icon-action:hover { transform: scale(1.1); }
-        .icon-action.view:hover { color: var(--text-primary); background: var(--bg-elevated); border-color: var(--text-primary); }
-        .icon-action.edit:hover { background: rgba(124, 58, 237, 0.1); color: var(--accent-soft); border-color: var(--accent-soft); }
-        .icon-action.delete:hover { background: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: #ef4444; }
+        .icon-action:hover { 
+          transform: translateY(-2px); 
+          color: var(--accent); 
+          background: rgba(124, 58, 237, 0.1); 
+        }
+        .icon-action.view:hover, .icon-action.edit:hover {
+          color: var(--accent);
+          background: rgba(124, 58, 237, 0.12);
+        }
+        .icon-action.delete:hover { 
+          color: #ef4444; 
+          background: rgba(239, 68, 68, 0.12); 
+        }
 
         .loading-state, .empty-state { padding: 80px; text-align: center; color: var(--text-muted); }
       `}</style>

@@ -1,17 +1,8 @@
-'use client'
+import { Sparkles, Info } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
+import CommentSection from '@/components/articles/CommentSection'
 
-import { 
-  ThumbsUp, 
-  MessageSquare, 
-  Bookmark, 
-  Share2,
-  Sparkles,
-  Award,
-  Zap,
-  Info
-} from 'lucide-react'
-
-export default function InterviewDetailView({ q }) {
+export default function InterviewDetailView({ q, stats }) {
   if (!q) return (
     <div className="empty-detail">
       <div className="empty-icon"><Info size={40} /></div>
@@ -66,17 +57,14 @@ export default function InterviewDetailView({ q }) {
           )}
         </blockquote>
 
-        {/* Interaction Bar */}
-        <footer className="detail-footer">
-          <div className="actions-left">
-            <button className="action-btn active"><ThumbsUp size={18} /> Helpful</button>
-            <button className="action-btn"><MessageSquare size={18} /> Discuss</button>
-          </div>
-          <div className="actions-right">
-            <button className="icon-btn"><Bookmark size={20} /></button>
-            <button className="icon-btn"><Share2 size={20} /></button>
-          </div>
-        </footer>
+        {/* Discussion Section */}
+        <div id="discussion" style={{ marginTop: 64 }}>
+          <CommentSection 
+            targetId={q.id} 
+            targetType="interview" 
+            totalCount={stats?.comments || 0} 
+          />
+        </div>
       </div>
 
       <style jsx global>{`
@@ -222,6 +210,7 @@ export default function InterviewDetailView({ q }) {
           display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;
         }
         .icon-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(124, 58, 237, 0.05); transform: translateY(-2px); }
+        .icon-btn.active-bookmark { color: var(--accent); border-color: var(--accent); background: rgba(124, 58, 237, 0.08); }
 
         .empty-detail {
           height: 500px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 40px;
