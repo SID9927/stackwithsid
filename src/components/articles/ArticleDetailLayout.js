@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { X, Copy, Check } from 'lucide-react'
 import { FaTwitter, FaLinkedin, FaWhatsapp } from 'react-icons/fa'
 import ArticleSidebar from './ArticleSidebar'
-import ArticleMobileBar from './ArticleMobileBar'
+import UnifiedMobileBar from '../common/UnifiedMobileBar'
 import ArticleHeader from './ArticleHeader'
 import SidebarDiscussion from './sidebar/SidebarDiscussion'
 import CommentSection from './CommentSection'
@@ -296,13 +296,17 @@ export default function ArticleDetailLayout({
         </div>
       </div>
 
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-100">
-        <ArticleMobileBar 
+      <div className="lg:hidden">
+        <UnifiedMobileBar 
           likes={stats.likes} 
           isLiked={stats.isLiked}
           onLikeToggle={handleLikeToggle}
           onShare={handleShare}
           commentsCount={stats.comments} 
+          onCommentClick={() => {
+            const el = document.getElementById('comments');
+            el?.scrollIntoView({ behavior: 'smooth' });
+          }}
           isBookmarked={stats.isBookmarked}
           onBookmarkToggle={handleBookmarkToggle}
         />

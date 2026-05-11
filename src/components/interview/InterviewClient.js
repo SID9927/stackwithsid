@@ -22,6 +22,7 @@ import InterviewDetailView from './InterviewDetailView'
 import { supabase } from '@/lib/supabase'
 import { X, Copy, Check, ThumbsUp, MessageSquare, Bookmark, Share2 } from 'lucide-react'
 import { FaTwitter, FaLinkedin, FaWhatsapp } from 'react-icons/fa'
+import UnifiedMobileBar from '../common/UnifiedMobileBar'
 
 export default function InterviewClient({ initialQuestions }) {
   const [questions, setQuestions] = useState(initialQuestions)
@@ -526,6 +527,24 @@ export default function InterviewClient({ initialQuestions }) {
           )}
         </AnimatePresence>
       </div>
+
+      {view === 'list' && (
+        <div className="lg:hidden">
+          <UnifiedMobileBar 
+            likes={stats.likes} 
+            isLiked={stats.isLiked}
+            onLikeToggle={handleLikeToggle}
+            onShare={handleShare}
+            commentsCount={stats.comments} 
+            onCommentClick={() => {
+              const el = document.getElementById('discussion')
+              if (el) el.scrollIntoView({ behavior: 'smooth' })
+            }}
+            isBookmarked={stats.isBookmarked}
+            onBookmarkToggle={handleBookmarkToggle}
+          />
+        </div>
+      )}
 
       <style jsx global>{`
         .interview-page-wrapper {
