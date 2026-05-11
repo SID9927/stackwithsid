@@ -56,9 +56,9 @@ export default function UnifiedMobileBar({
           right: 0;
           z-index: 1000;
           padding-bottom: env(safe-area-inset-bottom);
-          background: rgba(9, 9, 11, 0.9);
-          backdrop-filter: blur(20px);
-          -webkit-backdrop-filter: blur(20px);
+          background: #09090b;
+          backdrop-filter: none;
+          -webkit-backdrop-filter: none;
           border-top: 1px solid var(--border-subtle);
           border-radius: 24px 24px 0 0;
           box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
