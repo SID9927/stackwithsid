@@ -19,6 +19,21 @@ export default function UnifiedMobileBar({
       animate={{ y: 0 }}
       transition={{ delay: 0.5, duration: 0.5 }}
       className="mobile-action-bar-anchored"
+      style={{ 
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        backgroundColor: 'var(--bg-card)', 
+        background: 'var(--bg-card)',
+        opacity: 1, 
+        zIndex: 1000,
+        borderTop: '1px solid var(--border-subtle)', 
+        borderRadius: '40px 40px 0 0',
+        paddingBottom: 'env(safe-area-inset-bottom)',
+        boxShadow: '0 -4px 20px rgba(0,0,0,0.3)',
+        display: 'block'
+      }}
     >
       <div className="bar-container">
         <div className="action-group">
@@ -56,19 +71,21 @@ export default function UnifiedMobileBar({
           right: 0;
           z-index: 1000;
           padding-bottom: env(safe-area-inset-bottom);
-          background: #09090b;
-          backdrop-filter: none;
-          -webkit-backdrop-filter: none;
+          background: var(--bg-card) !important;
+          background-color: var(--bg-card) !important;
+          backdrop-filter: none !important;
+          -webkit-backdrop-filter: none !important;
           border-top: 1px solid var(--border-subtle);
-          border-radius: 24px 24px 0 0;
-          box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
+          border-radius: 40px 40px 0 0;
+          box-shadow: 0 -10px 50px rgba(0,0,0,0.6);
+          opacity: 1 !important;
         }
 
         .bar-container {
           display: flex; 
           align-items: center; 
           justify-content: space-between; 
-          height: 70px; 
+          height: 55px; 
           padding: 0 32px;
           max-width: 800px;
           margin: 0 auto;
@@ -83,7 +100,7 @@ export default function UnifiedMobileBar({
         .mobile-btn {
           background: none; 
           border: none; 
-          color: #fff; 
+          color: var(--text-primary); 
           display: flex; 
           align-items: center; 
           gap: 8px; 

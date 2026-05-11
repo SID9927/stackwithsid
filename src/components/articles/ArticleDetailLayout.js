@@ -7,7 +7,7 @@ import { X, Copy, Check } from 'lucide-react'
 import { FaTwitter, FaLinkedin, FaWhatsapp } from 'react-icons/fa'
 import ArticleSidebar from './ArticleSidebar'
 import UnifiedMobileBar from '@/components/common/UnifiedMobileBar'
-import ArticleHeader from './ArticleHeader'
+import ArticleHeader from './ArticleHeader' 
 import SidebarDiscussion from './sidebar/SidebarDiscussion'
 import CommentSection from './CommentSection'
 

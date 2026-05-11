@@ -44,14 +44,14 @@ export default function ScrollToTop() {
           whileTap={{ scale: 0.9 }}
           onClick={scrollToTop}
           // Optimized Tailwind v4 syntax (no more squiggles!)
-          className="fixed bottom-[70px] md:bottom-[60px] right-[20px] md:right-[32px] z-9999 
-                     w-[42px] h-[42px] md:w-[48px] md:h-[48px] 
+          className="fixed bottom-[80px] md:bottom-[80px] right-[20px] md:right-[32px] z-9999 
+                     w-[42px] h-[42px] md:w-[40px] md:h-[40px] 
                      rounded-[14px] md:rounded-[16px]
-                     bg-(--bg-card)/30 border border-(--border-subtle) 
+                     bg-(--bg-card)/50 border border-(--border-subtle) 
                      text-(--accent) flex items-center justify-center 
                      cursor-pointer shadow-[0_10px_25px_rgba(0,0,0,0.3)]
                      backdrop-blur-[10px] transition-all duration-300
-                     opacity-60 hover:opacity-100 hover:border-(--accent)"
+                     opacity-100 hover:opacity-100 hover:border-(--accent)"
           aria-label="Scroll to top"
         >
           <ArrowUp size={20} strokeWidth={3} className="drop-shadow-sm" />

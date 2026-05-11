@@ -601,7 +601,7 @@ export default function InterviewClient({ initialQuestions }) {
         }
 
         .mobile-list-trigger {
-          position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
+          position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%);
           z-index: 50; background: var(--accent); color: white; border: none;
           padding: 14px 28px; border-radius: 30px; font-weight: 800; font-size: 0.95rem;
           display: flex; align-items: center; gap: 10px; box-shadow: 0 10px 30px rgba(124, 58, 237, 0.4);
@@ -690,12 +690,22 @@ export default function InterviewClient({ initialQuestions }) {
           .split-layout { grid-template-columns: 1fr; gap: 0; }
           .master-pane { 
             position: fixed; inset: 0; z-index: 100; background: var(--bg-primary);
-            height: 100vh; width: 100vw; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            height: 100vh; width: 100%; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             border-radius: 0;
             padding-top: 80px; /* Safe area for site header */
+            visibility: hidden;
+            pointer-events: none;
           }
-          .master-pane.mobile-open { transform: translateY(0); }
-          .detail-pane { padding-bottom: 120px; }
+          .master-pane.mobile-open { transform: translateY(0); visibility: visible; pointer-events: auto; }
+          .detail-pane { padding-bottom: 120px; width: 100%; overflow-x: hidden; }
+          .detail-sidebar { display: none !important; }
+          
+          .list-top-nav { display: flex; align-items: center; gap: 16px; margin-bottom: 30px; }
+          @media (max-width: 640px) {
+            .list-top-nav { flex-direction: column; align-items: flex-start; gap: 16px; margin-bottom: 4px; }
+            .back-btn { padding: 6px 12px; font-size: 0.8rem; }
+            .active-breadcrumb { margin-left: 2px; font-size: 0.9rem; }
+          }
         }
 
         /* Sidebar Action Buttons */
