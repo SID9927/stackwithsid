@@ -316,11 +316,18 @@ export default function InterviewClient({ initialQuestions }) {
               <div className="hub-section">
                 <h2 className="hub-title"><Target size={24} className="text-accent" /> Dream Companies</h2>
                 <div className="company-grid">
-                  {companies.map(company => (
-                    <div key={company} className="company-card" onClick={() => handleSelectFilter('company', company)}>
-                      {company}
+                  {companies.length > 0 ? (
+                    companies.map(company => (
+                      <div key={company} className="company-card" onClick={() => handleSelectFilter('company', company)}>
+                        {company}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="coming-soon-placeholder glass-card">
+                      <Sparkles size={18} className="text-accent" />
+                      <span>Company-specific tracks coming soon...</span>
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -729,6 +736,20 @@ export default function InterviewClient({ initialQuestions }) {
         .copy-box button { width: 40px; height: 40px; border-radius: 10px; background: var(--bg-card); border: 1px solid var(--border-subtle); color: var(--accent); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
         .copy-box button.copied { background: #00ffaa; border-color: #00ffaa; color: #000; }
         .copy-box button:hover:not(.copied) { border-color: var(--accent); background: var(--border-subtle); }
+
+        .coming-soon-placeholder {
+          grid-column: 1 / -1;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 24px 32px;
+          border-radius: 24px;
+          background: rgba(255, 255, 255, 0.02);
+          border: 1px dashed var(--border-subtle);
+          color: var(--text-muted);
+          font-weight: 600;
+          font-size: 1rem;
+        }
       `}</style>
     </div>
   )
