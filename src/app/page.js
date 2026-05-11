@@ -73,34 +73,50 @@ const STACKS_DATA = [
 
 export default function HomePage() {
   const [stats, setStats] = useState(STATS_INITIAL)
+  const [stacks, setStacks] = useState(STACKS_DATA)
 
   useEffect(() => {
-    async function fetchStats() {
+    async function fetchData() {
       const sb = getSupabase()
       if (!sb) return
 
       try {
+        // Fetch Stats
         const [
           { count: articlesCount },
           { count: toolsCount },
-          { count: interviewCount }
+          { count: interviewCount },
+          { data: dbStacks }
         ] = await Promise.all([
           sb.from('articles').select('*', { count: 'exact', head: true }),
           sb.from('tools').select('*', { count: 'exact', head: true }),
-          sb.from('interview_questions').select('*', { count: 'exact', head: true })
+          sb.from('interview_questions').select('*', { count: 'exact', head: true }),
+          sb.from('tech_stacks').select('name').order('name')
         ])
 
         setStats([
           { label: 'Articles',   value: articlesCount ? `${articlesCount}+` : '10+',  icon: FileText },
-          // { label: 'Dev Tools',  value: toolsCount ? `${toolsCount}+` : '15+',     icon: Wrench },
           { label: 'Q&As',       value: interviewCount ? `${interviewCount}+` : '50+', icon: Zap },
-          // { label: 'Community',  value: '100+',  icon: Users },
         ])
+
+        // If we have stacks in DB, use them (mapping icons if possible)
+        if (dbStacks && dbStacks.length > 0) {
+          const iconMap = {
+            'React': Atom, 'Node.js': Server, 'Next.js': Triangle, 'DSA': Code2,
+            'System Design': Network, 'CSS': Palette, 'TypeScript': FileCode,
+            'MongoDB': Database, 'SQL': Database, 'Docker': Box
+          }
+          const dynamicStacks = dbStacks.map(s => ({
+            name: s.name,
+            icon: iconMap[s.name] || Layers // Default icon for unknown stacks
+          }))
+          setStacks(dynamicStacks)
+        }
       } catch (err) {
-        console.warn('Stats fetch error:', err)
+        console.warn('Dashboard fetch error:', err)
       }
     }
-    fetchStats()
+    fetchData()
   }, [])
 
   return (
@@ -114,7 +130,7 @@ export default function HomePage() {
       <Features features={FEATURES_DATA} />
 
       {/* ── STACK CHIPS ──────────────────────────────────────────── */}
-      <StackChips stacks={STACKS_DATA} />
+      <StackChips stacks={stacks} />
 
       {/* ── CTA BANNER ───────────────────────────────────────────── */}
       <CTABanner />

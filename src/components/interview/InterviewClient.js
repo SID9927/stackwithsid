@@ -201,7 +201,7 @@ export default function InterviewClient({ initialQuestions }) {
         // Refresh all data to ensure sorting and filtering stay correct
         const { data } = await supabase
           .from('interview_questions')
-          .select('id, question, answer, stack, difficulty, created_at, company')
+          .select('id, slug, question, answer, stack, difficulty, created_at, company, is_frequent')
           .order('created_at', { ascending: false })
         
         if (data) {
