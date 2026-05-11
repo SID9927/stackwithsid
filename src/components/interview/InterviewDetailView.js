@@ -40,7 +40,8 @@ export default function InterviewDetailView({ q, stats }) {
               q.answer?.split('\n\n').map((para, i) => {
                 const formattedPara = para
                   .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                  .replace(/`(.*?)`/g, '<code>$1</code>');
+                  .replace(/`(.*?)`/g, '<code>$1</code>')
+                  .replace(/(\/\/\s.*)/g, '<span class="code-comment">$1</span>');
                 return (
                   <p key={i} dangerouslySetInnerHTML={{ __html: formattedPara }} />
                 );
@@ -191,6 +192,11 @@ export default function InterviewDetailView({ q, stats }) {
           padding: 0;
           border-radius: 0;
           font-size: inherit;
+        }
+
+        .explanation-text .code-comment {
+          color: #4ade80;
+          font-style: italic;
         }
 
         @media (max-width: 1024px) {
