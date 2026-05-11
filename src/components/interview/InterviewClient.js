@@ -22,6 +22,7 @@ import InterviewDetailView from './InterviewDetailView'
 import { supabase } from '@/lib/supabase'
 import { X, Copy, Check, ThumbsUp, MessageSquare, Bookmark, Share2 } from 'lucide-react'
 import UnifiedMobileBar from '@/components/common/UnifiedMobileBar'
+import { FaTwitter, FaLinkedin, FaWhatsapp } from 'react-icons/fa'
 
 export default function InterviewClient({ initialQuestions }) {
   const [questions, setQuestions] = useState(initialQuestions)
