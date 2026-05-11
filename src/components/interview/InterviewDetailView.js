@@ -38,7 +38,9 @@ export default function InterviewDetailView({ q, stats }) {
               <div dangerouslySetInnerHTML={{ __html: q.answer }} />
             ) : (
               q.answer?.split('\n\n').map((para, i) => {
-                const formattedPara = para.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                const formattedPara = para
+                  .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                  .replace(/`(.*?)`/g, '<code>$1</code>');
                 return (
                   <p key={i} dangerouslySetInnerHTML={{ __html: formattedPara }} />
                 );
@@ -158,6 +160,37 @@ export default function InterviewDetailView({ q, stats }) {
         .explanation-text table::-webkit-scrollbar-thumb {
           background: var(--accent-soft);
           border-radius: 10px;
+        }
+
+        .explanation-text pre {
+          background: #0d0d12;
+          border: 1px solid var(--border-subtle);
+          border-radius: 12px;
+          padding: 20px;
+          margin: 24px 0;
+          overflow-x: auto;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 0.95rem;
+          line-height: 1.6;
+          color: #e2e8f0;
+          box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .explanation-text code {
+          font-family: 'JetBrains Mono', monospace;
+          background: rgba(124, 58, 237, 0.1);
+          color: var(--accent-soft);
+          padding: 2px 6px;
+          border-radius: 6px;
+          font-size: 0.9em;
+        }
+
+        .explanation-text pre code {
+          background: none;
+          color: inherit;
+          padding: 0;
+          border-radius: 0;
+          font-size: inherit;
         }
 
         @media (max-width: 1024px) {
