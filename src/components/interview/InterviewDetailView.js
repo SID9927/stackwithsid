@@ -34,19 +34,23 @@ export default function InterviewDetailView({ q, stats }) {
             <Sparkles size={16} className="text-accent" /> Expert Explanation
           </div>
           <div className="explanation-text">
-            {q.answer?.includes('<p>') ? (
-              <div dangerouslySetInnerHTML={{ __html: q.answer }} />
-            ) : (
-              q.answer?.split('\n\n').map((para, i) => {
-                const formattedPara = para
+            {(() => {
+              const formatRichText = (text) => {
+                if (!text) return '';
+                return text
                   .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                   .replace(/`(.*?)`/g, '<code>$1</code>')
                   .replace(/(\/\/\s.*)/g, '<span class="code-comment">$1</span>');
-                return (
-                  <p key={i} dangerouslySetInnerHTML={{ __html: formattedPara }} />
-                );
-              })
-            )}
+              };
+
+              if (q.answer?.includes('<p>') || q.answer?.includes('<pre>')) {
+                return <div dangerouslySetInnerHTML={{ __html: formatRichText(q.answer) }} />;
+              }
+
+              return q.answer?.split('\n\n').map((para, i) => (
+                <p key={i} dangerouslySetInnerHTML={{ __html: formatRichText(para) }} />
+              ));
+            })()}
           </div>
         </div>
 
