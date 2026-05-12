@@ -1,36 +1,81 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# 🚀 StackWithSid
 
-## Getting Started
+> The ultimate hub for modern developers: Deep-dive articles, curated interview prep, and powerful tools—all in one premium platform.
 
-First, run the development server:
+![Next.js](https://img.shields.io/badge/Next.js-black?style=for-the-badge&logo=next.js&logoColor=white)
+![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
+![Framer](https://img.shields.io/badge/Framer_Motion-black?style=for-the-badge&logo=framer&logoColor=blue)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+StackWithSid is a full-stack Next.js application built with a focus on **Premium Aesthetics**, **Mobile-First Architecture**, and **High Performance**. It offers developers a central place to learn, prepare for interviews, and connect.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## ✨ Features
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+- **📖 Deep-Dive Articles:** In-depth technical content on modern web development, system design, and best practices.
+- **⚡ Interview Hub:** Curated questions for React, Node.js, DSA, and System Design with difficulty levels and stack filtering.
+- **🛠️ Developer Tools:** A handpicked directory of the best tools to boost productivity and workflow.
+- **💬 Open Discussions:** Engage with fellow developers through comments and rich interactions.
+- **🛡️ Secure Auth & Profiles:** Powered by Supabase, featuring user profiles, article likes, and robust bookmarking functionality.
+- **📱 Responsive & Premium UI:** Glassmorphism, smooth animations with Framer Motion, and mobile-optimized layouts designed for touch.
+- **🎛️ Admin CMS:** Built-in high-fidelity dashboard for managing articles, interview questions, tech stacks, and global site settings.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 💻 Tech Stack
 
-## Learn More
+- **Framework:** [Next.js 16](https://nextjs.org/) (App Router)
+- **Styling:** [Tailwind CSS v4](https://tailwindcss.com/)
+- **Database & Auth:** [Supabase](https://supabase.com/)
+- **Animations:** [Framer Motion](https://www.framer.com/motion/)
+- **Rich Text Editor:** [Tiptap](https://tiptap.dev/)
+- **Icons:** [Lucide React](https://lucide.dev/)
 
-To learn more about Next.js, take a look at the following resources:
+## 🚀 Getting Started
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Prerequisites
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Node.js (v18 or higher)
+- npm, yarn, pnpm, or bun
+- A [Supabase](https://supabase.com/) account and project
 
-## Deploy on Vercel
+### Installation
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/yourusername/stackwithsid.git
+   cd stackwithsid
+   ```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+
+3. **Environment Setup:**
+   Create a `.env.local` file in the root directory and add your Supabase credentials:
+   ```env
+   NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+   ```
+
+4. **Database Setup:**
+   Run the SQL scripts provided in the root directory (`supabase_schema.sql`, `supabase_interview_frequent.sql`, etc.) in your Supabase SQL Editor to set up the necessary tables, triggers, and Row Level Security (RLS) policies.
+
+5. **Run the development server:**
+   ```bash
+   npm run dev
+   ```
+
+6. **Open the app:**
+   Visit [http://localhost:3000](http://localhost:3000) in your browser.
+
+## 📂 Project Structure
+
+- `/src/app` - Next.js App Router pages and API routes.
+- `/src/components` - Reusable UI components organized by feature (layout, home, admin, etc.).
+- `/src/hooks` - Custom React hooks for shared logic.
+- `/src/lib` - Utility functions and Supabase client configuration.
+- `/*.sql` - Supabase schema and migration scripts.
+
+## 📄 License
+
+This project is proprietary and closed-source. All rights reserved.
