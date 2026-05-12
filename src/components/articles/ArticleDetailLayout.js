@@ -3,11 +3,10 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '@/lib/supabase'
-import { X, Copy, Check } from 'lucide-react'
-import { FaTwitter, FaLinkedin, FaWhatsapp } from 'react-icons/fa'
 import ArticleSidebar from './ArticleSidebar'
 import UnifiedMobileBar from '@/components/common/UnifiedMobileBar'
 import ArticleHeader from './ArticleHeader' 
+import ShareModal from '@/components/common/ShareModal'
 import SidebarDiscussion from './sidebar/SidebarDiscussion'
 import CommentSection from './CommentSection'
 
@@ -21,7 +20,6 @@ export default function ArticleDetailLayout({
 }) {
   const [stats, setStats] = useState({ likes: 0, comments: 0, isLiked: false, isBookmarked: false, recentComments: [] })
   const [shareModalOpen, setShareModalOpen] = useState(false)
-  const [copied, setCopied] = useState(false)
   const [currentUrl, setCurrentUrl] = useState('')
 
   useEffect(() => {
@@ -181,7 +179,7 @@ export default function ArticleDetailLayout({
   const handleShare = async () => {
     const shareData = {
       title: title,
-      text: `Check out this article: ${title}`,
+      text: `Read this Article: ${title}\n\nExplore more on SidStack:\n`,
       url: currentUrl,
     }
 
@@ -196,57 +194,16 @@ export default function ArticleDetailLayout({
     }
   }
 
-  const copyToClipboard = async () => {
-    await navigator.clipboard.writeText(currentUrl)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  const socialLinks = [
-    { name: 'WhatsApp', icon: <FaWhatsapp size={20} />, color: '#25D366', url: `https://wa.me/?text=${encodeURIComponent(title + ' ' + currentUrl)}` },
-    { name: 'X', icon: <FaTwitter size={20} />, color: '#000000', url: `https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(currentUrl)}` },
-    { name: 'LinkedIn', icon: <FaLinkedin size={20} />, color: '#0077b5', url: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(currentUrl)}` }
-  ]
-
   return (
     <main className="article-detail-page">
       {/* Share Modal */}
-      <AnimatePresence>
-        {shareModalOpen && (
-          <div className="share-modal-overlay">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="share-modal"
-            >
-              <div className="modal-header">
-                <h3>Share Article</h3>
-                <button onClick={() => setShareModalOpen(false)}><X size={20} /></button>
-              </div>
-              
-              <div className="social-grid">
-                {socialLinks.map(link => (
-                  <a key={link.name} href={link.url} target="_blank" rel="noopener noreferrer" className="social-item">
-                    <div className="icon-wrapper" style={{ background: link.color }}>{link.icon}</div>
-                    <span>{link.name}</span>
-                  </a>
-                ))}
-              </div>
-
-              <div className="copy-section">
-                <p>Article Link</p>
-                <div className="copy-box">
-                  <input type="text" readOnly value={currentUrl} />
-                  <button onClick={copyToClipboard} className={copied ? 'copied' : ''}>
-                    {copied ? <Check size={18} /> : <Copy size={18} />}
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <ShareModal 
+        isOpen={shareModalOpen} 
+        onClose={() => setShareModalOpen(false)} 
+        title={title} 
+        url={currentUrl} 
+        type="Article" 
+      />
       {/* Background Decorations */}
       <div className="bg-decorations">
         <div className="orb orb-1" />
@@ -376,50 +333,72 @@ export default function ArticleDetailLayout({
           padding: clamp(24px, 5%, 56px); 
           box-shadow: var(--shadow-card); 
           color: var(--text-secondary);
-          line-height: 1.8; 
+          line-height: 1.65; 
           font-size: 1.15rem; 
           backdrop-filter: blur(10px);
           max-width: 100%;
           overflow: hidden; /* Ensure content doesn't bleed */
         }
 
-        .article-content-render {
+        .article-body {
           color: var(--text-secondary);
-          line-height: 1.8;
+          line-height: 1.65;
           font-size: 1.15rem;
         }
-        .article-content-render h2 { 
+        .article-body h2 { 
           font-family: Syne, sans-serif; 
           font-size: 2rem; 
-          margin: 56px 0 24px; 
+          margin: 40px 0 20px; 
           font-weight: 700;
           letter-spacing: -0.02em;
           color: var(--text-primary);
         }
-        .article-content-render h3 { font-family: Syne, sans-serif; font-size: 1.4rem; font-weight: 700; color: var(--text-primary); margin: 36px 0 16px; }
-        .article-content-render p { margin-bottom: 28px; }
-        .article-content-render strong { color: var(--text-primary); }
-        .article-content-render em { font-style: italic; }
-        .article-content-render a { color: var(--accent); text-decoration: underline; }
-        .article-content-render blockquote {
+        .article-body h3 { font-family: Syne, sans-serif; font-size: 1.4rem; font-weight: 700; color: var(--text-primary); margin: 32px 0 16px; }
+        .article-body p { margin-bottom: 28px; }
+        .article-body strong { color: var(--text-primary); }
+        .article-body em { font-style: italic; }
+        .article-body a { color: var(--accent); text-decoration: underline; }
+        .article-body blockquote {
           border-left: 4px solid var(--accent); padding: 16px 32px;
           margin: 48px 0; font-style: italic; color: var(--text-muted);
           font-size: 1.2rem; line-height: 1.6;
           background: rgba(124, 58, 237, 0.04); border-radius: 0 12px 12px 0;
         }
-        .article-content-render code { font-family: var(--font-mono); background: var(--bg-elevated); padding: 3px 8px; border-radius: 6px; font-size: 0.88em; color: var(--accent-soft); }
-        .article-content-render pre { background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 16px; padding: 28px 32px; overflow-x: auto; margin: 32px 0; }
-        .article-content-render pre code { background: none; color: var(--text-primary); padding: 0; font-size: inherit; line-height: 1.7; }
-        .article-content-render ul, .article-content-render ol { padding-left: 28px; margin-bottom: 24px; }
-        .article-content-render li { margin-bottom: 8px; line-height: 1.7; }
-        .article-content-render ul li { list-style-type: disc; }
-        .article-content-render ol li { list-style-type: decimal; }
-        .article-content-render ul, .article-content-render ol { padding-left: 28px; margin-bottom: 24px; }
-        .article-content-render li { margin-bottom: 8px; line-height: 1.7; }
-        .article-content-render hr { border: none; border-top: 1px solid var(--border-subtle); margin: 48px 0; }
+        .article-body code { font-family: var(--font-mono); background: var(--bg-elevated); padding: 3px 8px; border-radius: 6px; font-size: 0.88em; color: var(--accent-soft); }
+        .article-body pre { 
+          background: #0d0d12 !important; 
+          color: #e2e8f0 !important;
+          border: 1px solid var(--border-subtle); 
+          border-radius: 16px; 
+          padding: 28px 32px; 
+          margin: 32px 0; 
+          overflow-x: auto;
+          box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);
+          position: relative;
+        }
+        .article-body pre::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          border-radius: 16px;
+          padding: 1px;
+          background: linear-gradient(to bottom right, var(--accent-soft), transparent, var(--accent-soft));
+          -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+          mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+          -webkit-mask-composite: xor;
+          mask-composite: exclude;
+          opacity: 0.4;
+          pointer-events: none;
+        }
+        .article-body pre code { background: none !important; color: #e2e8f0 !important; padding: 0; font-size: inherit; line-height: 1.7; opacity: 1; }
+        .article-body ul, .article-body ol { padding-left: 28px; margin-bottom: 20px; }
+        .article-body li { margin-bottom: 6px; line-height: 1.6; }
+        .article-body ul li { list-style-type: disc; }
+        .article-body ol li { list-style-type: decimal; }
+        .article-body hr { border: none; border-top: 1px solid var(--border-subtle); margin: 48px 0; }
 
         /* Tables */
-        .article-content-render table {
+        .article-body table {
           border-collapse: collapse;
           table-layout: auto !important; /* Allow natural width calculation */
           width: 100% !important;
@@ -429,7 +408,7 @@ export default function ArticleDetailLayout({
           border: 1px solid var(--border-subtle);
           background: var(--bg-card);
         }
-        .article-content-render th {
+        .article-body th {
           background: rgba(124, 58, 237, 0.15);
           color: var(--accent);
           font-weight: 800;
@@ -442,7 +421,7 @@ export default function ArticleDetailLayout({
           white-space: normal !important; 
           word-break: normal;
         }
-        .article-content-render td {
+        .article-body td {
           padding: 14px 20px;
           border: 1px solid rgba(124, 58, 237, 0.15);
           color: var(--text-secondary);
@@ -450,17 +429,17 @@ export default function ArticleDetailLayout({
           transition: background 0.2s;
           word-break: normal;
         }
-        .article-content-render tr:nth-child(even) td {
+        .article-body tr:nth-child(even) td {
           background: rgba(255, 255, 255, 0.01);
         }
-        .article-content-render tr:hover td {
+        .article-body tr:hover td {
           background: rgba(124, 58, 237, 0.04);
         }
 
         /* Table Alignment Support */
-        .article-content-render table[style*="text-align: center"] { margin-left: auto !important; margin-right: auto !important; }
-        .article-content-render table[style*="text-align: right"] { margin-left: auto !important; margin-right: 0 !important; }
-        .article-content-render table[style*="text-align: left"] { margin-left: 0 !important; margin-right: auto !important; }
+        .article-body table[style*="text-align: center"] { margin-left: auto !important; margin-right: auto !important; }
+        .article-body table[style*="text-align: right"] { margin-left: auto !important; margin-right: 0 !important; }
+        .article-body table[style*="text-align: left"] { margin-left: 0 !important; margin-right: auto !important; }
 
         /* Support for Tiptap's tableWrapper */
         .tableWrapper {
@@ -497,35 +476,35 @@ export default function ArticleDetailLayout({
         }
 
         /* Callout Cards */
-        .article-content-render .callout {
+        .article-body .callout {
           margin: 40px 0;
           padding: 24px 28px;
           border-radius: 16px;
           border: 1px solid var(--border-subtle);
           background: rgba(255, 255, 255, 0.02);
         }
-        .article-content-render .callout-success {
+        .article-body .callout-success {
           border-color: rgba(0, 255, 170, 0.25);
           background: rgba(0, 255, 170, 0.04);
         }
-        .article-content-render .callout-success strong { color: #00ffaa; }
-        .article-content-render .callout-info {
+        .article-body .callout-success strong { color: #00ffaa; }
+        .article-body .callout-info {
           border-color: rgba(59, 130, 246, 0.3);
           background: rgba(59, 130, 246, 0.05);
         }
-        .article-content-render .callout-info strong { color: #60a5fa; }
-        .article-content-render .callout-tip {
+        .article-body .callout-info strong { color: #60a5fa; }
+        .article-body .callout-tip {
           border-color: rgba(245, 158, 11, 0.3);
           background: rgba(245, 158, 11, 0.05);
         }
-        .article-content-render .callout-tip strong { color: #fbbf24; }
-        .article-content-render .callout-warning {
+        .article-body .callout-tip strong { color: #fbbf24; }
+        .article-body .callout-warning {
           border-color: rgba(239, 68, 68, 0.3);
           background: rgba(239, 68, 68, 0.05);
         }
-        .article-content-render .callout-warning strong { color: #f87171; }
-        .article-content-render .callout p { margin-bottom: 8px; }
-        .article-content-render .callout p:last-child { margin-bottom: 0; }
+        .article-body .callout-warning strong { color: #f87171; }
+        .article-body .callout p { margin-bottom: 8px; }
+        .article-body .callout p:last-child { margin-bottom: 0; }
 
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
@@ -563,35 +542,7 @@ export default function ArticleDetailLayout({
             margin-bottom: 120px !important; 
           }
         }
-
-        /* Share Modal Styles */
-        .share-modal-overlay {
-          position: fixed; inset: 0; background: rgba(0,0,0,0.6); 
-          backdrop-filter: blur(8px); z-index: 1000; 
-          display: flex; align-items: center; justify-content: center; padding: 20px;
-        }
-        .share-modal {
-          background: var(--bg-card); border: 1px solid var(--border-subtle); 
-          border-radius: 32px; width: 100%; max-width: 400px; padding: 32px;
-          box-shadow: 0 20px 80px rgba(0,0,0,0.3);
-        }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; }
-        .modal-header h3 { font-family: Syne, sans-serif; font-size: 1.5rem; font-weight: 800; color: var(--text-primary); margin: 0; }
-        .modal-header button { background: none; border: none; color: var(--text-muted); cursor: pointer; transition: color 0.2s; }
-        .modal-header button:hover { color: var(--text-primary); }
-        
-        .social-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 40px; }
-        .social-item { display: flex; flex-direction: column; align-items: center; gap: 10px; text-decoration: none; }
-        .icon-wrapper { width: 56px; height: 56px; border-radius: 18px; display: flex; align-items: center; justify-content: center; color: white; transition: transform 0.2s; }
-        .social-item:hover .icon-wrapper { transform: translateY(-5px); }
-        .social-item span { font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); }
-        
-        .copy-section p { font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; }
-        .copy-box { display: flex; gap: 10px; background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 14px; padding: 6px 6px 6px 16px; align-items: center; }
-        .copy-box input { flex: 1; background: none; border: none; color: var(--text-secondary); font-size: 0.9rem; outline: none; }
-        .copy-box button { width: 40px; height: 40px; border-radius: 10px; background: var(--bg-card); border: 1px solid var(--border-subtle); color: var(--accent); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
-        .copy-box button.copied { background: #00ffaa; border-color: #00ffaa; color: #000; }
-        .copy-box button:hover:not(.copied) { border-color: var(--accent); background: var(--border-subtle); }
+        .orb-2 { top: 60%; right: -10%; width: 400px; height: 400px; background: rgba(124, 58, 237, 0.08); animation-delay: -3s; }
       `}</style>
     </main>
   )

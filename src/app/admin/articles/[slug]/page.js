@@ -7,26 +7,26 @@ import { supabase } from '@/lib/supabase'
 export default function EditArticlePage({ params }) {
   const [article, setArticle] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [id, setId] = useState(null)
+  const [slug, setSlug] = useState(null)
 
   // 1. Unwrap the Promise-based params (Next.js 15+)
   useEffect(() => {
     async function resolveParams() {
       const resolved = await params
-      setId(resolved.id)
+      setSlug(resolved.slug)
     }
     resolveParams()
   }, [params])
 
   // 2. Fetch data as the authenticated user
   useEffect(() => {
-    if (!id) return
+    if (!slug) return
     
     async function loadArticle() {
       const { data, error } = await supabase
         .from('articles')
         .select('*')
-        .eq('id', id)
+        .eq('slug', slug)
         .single()
         
       if (error) {
@@ -38,7 +38,7 @@ export default function EditArticlePage({ params }) {
     }
     
     loadArticle()
-  }, [id])
+  }, [slug])
 
   if (loading) {
     return (

@@ -108,7 +108,7 @@ export default function AdminArticles() {
                       <Link href={`/articles/${a.slug}`} target="_blank" className="icon-action view">
                         <Eye size={18} />
                       </Link>
-                      <Link href={`/admin/articles/${a.id}`} className="icon-action edit">
+                      <Link href={`/admin/articles/${a.slug}`} className="icon-action edit">
                         <Pencil size={18} />
                       </Link>
                       <button onClick={() => handleDelete(a.id)} className="icon-action delete">

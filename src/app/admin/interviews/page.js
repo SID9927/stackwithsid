@@ -103,10 +103,10 @@ export default function AdminInterviews() {
                   <td><span className="company-text">{q.company || '—'}</span></td>
                   <td style={{ textAlign: 'right' }}>
                     <div className="actions-cell">
-                      <Link href={`/interview?q=${q.id}`} target="_blank" className="icon-action view">
+                      <Link href={`/interview?q=${q.slug}`} target="_blank" className="icon-action view">
                         <Eye size={18} />
                       </Link>
-                      <Link href={`/admin/interviews/${q.id}`} className="icon-action edit">
+                      <Link href={`/admin/interviews/${q.slug}`} className="icon-action edit">
                         <Pencil size={18} />
                       </Link>
                       <button onClick={() => handleDelete(q.id)} className="icon-action delete">

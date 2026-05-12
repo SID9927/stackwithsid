@@ -15,19 +15,21 @@ import {
   ChevronRight,
   Filter
 } from 'lucide-react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import InterviewQuestionCard from './InterviewQuestionCard'
 import InterviewDetailView from './InterviewDetailView'
 
 import { supabase } from '@/lib/supabase'
 import { X, Copy, Check, ThumbsUp, MessageSquare, Bookmark, Share2 } from 'lucide-react'
 import UnifiedMobileBar from '@/components/common/UnifiedMobileBar'
+import ShareModal from '@/components/common/ShareModal'
 import { FaTwitter, FaLinkedin, FaWhatsapp } from 'react-icons/fa'
 
 export default function InterviewClient({ initialQuestions }) {
   const [questions, setQuestions] = useState(initialQuestions)
   const [loading, setLoading] = useState(false)
   const searchParams = useSearchParams()
+  const router = useRouter()
   const qId = searchParams.get('q')
 
   const [view, setView] = useState('hub')
@@ -176,21 +178,29 @@ export default function InterviewClient({ initialQuestions }) {
   const handleShare = async () => {
     const shareData = {
       title: selectedQuestion?.question,
-      text: `Check out this interview question: ${selectedQuestion?.question}`,
+      text: `R this Interview Question: ${selectedQuestion?.question}\n\nLearn more on SidStack:\n`,
       url: currentUrl,
     }
 
     if (navigator.share) {
-      try { await navigator.share(shareData) } catch (err) { console.error('Error sharing:', err) }
+      try {
+        await navigator.share(shareData)
+      } catch (err) {
+        console.error('Error sharing:', err)
+      }
     } else {
       setShareModalOpen(true)
     }
   }
 
   const copyToClipboard = async () => {
-    await navigator.clipboard.writeText(currentUrl)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    try {
+      await navigator.clipboard.writeText(currentUrl)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (err) {
+      console.error('Failed to copy!', err)
+    }
   }
 
 
@@ -247,12 +257,6 @@ export default function InterviewClient({ initialQuestions }) {
   const selectedQuestion = useMemo(() => {
     return filtered.find(q => q.id === selectedId) || filtered[0]
   }, [filtered, selectedId])
-
-  const socialLinks = useMemo(() => [
-    { name: 'WhatsApp', icon: <FaWhatsapp size={20} />, color: '#25D366', url: `https://wa.me/?text=${encodeURIComponent((selectedQuestion?.question || '') + ' ' + currentUrl)}` },
-    { name: 'X', icon: <FaTwitter size={20} />, color: '#000000', url: `https://twitter.com/intent/tweet?text=${encodeURIComponent(selectedQuestion?.question || '')}&url=${encodeURIComponent(currentUrl)}` },
-    { name: 'LinkedIn', icon: <FaLinkedin size={20} />, color: '#0077b5', url: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(currentUrl)}` }
-  ], [selectedQuestion, currentUrl])
 
   useEffect(() => {
     if (filtered.length > 0) {
@@ -438,7 +442,7 @@ export default function InterviewClient({ initialQuestions }) {
                     <div className="sidebar-card highlight">
                       <div className="mastery-header">
                         <Sparkles size={18} className="text-accent" />
-                        <h4>Mastery Check</h4>
+                        <h4>Learning Check</h4>
                       </div>
                       
                       <div className="interaction-stack">
@@ -487,48 +491,19 @@ export default function InterviewClient({ initialQuestions }) {
               </div>
 
               {/* Share Modal */}
-              <AnimatePresence>
-                {shareModalOpen && (
-                  <div className="share-modal-overlay">
-                    <motion.div 
-                      initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                      className="share-modal"
-                    >
-                      <div className="modal-header">
-                        <h3>Share Question</h3>
-                        <button onClick={() => setShareModalOpen(false)}><X size={20} /></button>
-                      </div>
-                      
-                      <div className="social-grid">
-                        {socialLinks.map(link => (
-                          <a key={link.name} href={link.url} target="_blank" rel="noopener noreferrer" className="social-item">
-                            <div className="icon-wrapper" style={{ background: link.color }}>{link.icon}</div>
-                            <span>{link.name}</span>
-                          </a>
-                        ))}
-                      </div>
-
-                      <div className="copy-section">
-                        <p>Question Link</p>
-                        <div className="copy-box">
-                          <input type="text" readOnly value={currentUrl} />
-                          <button onClick={copyToClipboard} className={copied ? 'copied' : ''}>
-                            {copied ? <Check size={18} /> : <Copy size={18} />}
-                          </button>
-                        </div>
-                      </div>
-                    </motion.div>
-                  </div>
-                )}
-              </AnimatePresence>
+              <ShareModal 
+                isOpen={shareModalOpen} 
+                onClose={() => setShareModalOpen(false)} 
+                title={selectedQuestion?.question} 
+                url={currentUrl} 
+                type="Question" 
+              />
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-[1001]">
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-1001">
         {view === 'list' && selectedId && (
           <UnifiedMobileBar 
             likes={stats.likes} 
@@ -625,9 +600,6 @@ export default function InterviewClient({ initialQuestions }) {
         .sidebar-card.highlight { border-color: var(--accent-soft); background: rgba(124, 58, 237, 0.05); }
         .sidebar-card h4 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent-soft); margin-bottom: 12px; }
         .sidebar-card p { font-size: 0.9rem; color: var(--text-secondary); line-height: 1.6; margin: 0; }
-        .related-list { list-style: none; padding: 0; margin: 0; display: flex; flexDirection: column; gap: 10px; }
-        .related-list li { font-size: 0.9rem; color: var(--text-primary); font-weight: 600; cursor: pointer; }
-        .related-list li:hover { color: var(--accent); }
 
         .pane-header { padding: 20px; border-bottom: 1px solid var(--border-subtle); background: rgba(255,255,255,0.02); }
         .mobile-pane-top { display: none; }
@@ -676,7 +648,6 @@ export default function InterviewClient({ initialQuestions }) {
 
         .no-questions { padding: 40px; text-align: center; color: var(--text-muted); font-size: 0.9rem; }
 
-        /* Custom Scrollbar */
         .question-list::-webkit-scrollbar { width: 5px; }
         .question-list::-webkit-scrollbar-track { background: transparent; }
         .question-list::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 10px; }
@@ -692,7 +663,8 @@ export default function InterviewClient({ initialQuestions }) {
             position: fixed; inset: 0; z-index: 100; background: var(--bg-primary);
             height: 100vh; width: 100%; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             border-radius: 0;
-            padding-top: 80px; /* Safe area for site header */
+            padding-top: 80px; 
+            padding-bottom: 40px; 
             visibility: hidden;
             pointer-events: none;
           }
@@ -708,7 +680,6 @@ export default function InterviewClient({ initialQuestions }) {
           }
         }
 
-        /* Sidebar Action Buttons */
         .mastery-header { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
         .mastery-header h4 { margin: 0 !important; color: var(--text-primary) !important; font-size: 1rem !important; }
 
@@ -736,35 +707,6 @@ export default function InterviewClient({ initialQuestions }) {
         }
         .mini-action-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--bg-elevated); }
         .mini-action-btn.active { color: var(--accent); border-color: var(--accent); background: rgba(124, 58, 237, 0.08); }
-
-        /* Share Modal Styles (Moved from DetailView) */
-        .share-modal-overlay {
-          position: fixed; inset: 0; background: rgba(0,0,0,0.6); 
-          backdrop-filter: blur(8px); z-index: 1000; 
-          display: flex; align-items: center; justify-content: center; padding: 20px;
-        }
-        .share-modal {
-          background: var(--bg-card); border: 1px solid var(--border-subtle); 
-          border-radius: 32px; width: 100%; max-width: 400px; padding: 32px;
-          box-shadow: 0 20px 80px rgba(0,0,0,0.3);
-        }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; }
-        .modal-header h3 { font-family: Syne, sans-serif; font-size: 1.5rem; font-weight: 800; color: var(--text-primary); margin: 0; }
-        .modal-header button { background: none; border: none; color: var(--text-muted); cursor: pointer; transition: color 0.2s; }
-        .modal-header button:hover { color: var(--text-primary); }
-        
-        .social-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 40px; }
-        .social-item { display: flex; flex-direction: column; align-items: center; gap: 10px; text-decoration: none; }
-        .icon-wrapper { width: 56px; height: 56px; border-radius: 18px; display: flex; align-items: center; justify-content: center; color: white; transition: transform 0.2s; }
-        .social-item:hover .icon-wrapper { transform: translateY(-5px); }
-        .social-item span { font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); }
-        
-        .copy-section p { font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; }
-        .copy-box { display: flex; gap: 10px; background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 14px; padding: 6px 6px 6px 16px; align-items: center; }
-        .copy-box input { flex: 1; background: none; border: none; color: var(--text-secondary); font-size: 0.9rem; outline: none; }
-        .copy-box button { width: 40px; height: 40px; border-radius: 10px; background: var(--bg-card); border: 1px solid var(--border-subtle); color: var(--accent); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
-        .copy-box button.copied { background: #00ffaa; border-color: #00ffaa; color: #000; }
-        .copy-box button:hover:not(.copied) { border-color: var(--accent); background: var(--border-subtle); }
 
         .coming-soon-placeholder {
           grid-column: 1 / -1;

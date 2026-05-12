@@ -6,8 +6,8 @@ export default function InterviewDetailView({ q, stats }) {
   if (!q) return (
     <div className="empty-detail">
       <div className="empty-icon"><Info size={40} /></div>
-      <h3>Select a question to begin mastery</h3>
-      <p>Choose from the list on the left to view expert explanations and hiring insights.</p>
+      <h3>Select a question to start learning</h3>
+      <p>Choose from the list on the left to view simplified explanations and hiring insights.</p>
     </div>
   )
 
@@ -31,7 +31,7 @@ export default function InterviewDetailView({ q, stats }) {
         {/* Expert Explanation */}
         <div className="explanation-section">
           <div className="section-label">
-            <Sparkles size={16} className="text-accent" /> Expert Explanation
+            <Sparkles size={16} className="text-accent" /> Simplified Explanation
           </div>
           <div className="explanation-text">
             {(() => {
@@ -168,17 +168,32 @@ export default function InterviewDetailView({ q, stats }) {
         }
 
         .explanation-text pre {
-          background: #0d0d12;
+          background: #0d0d12 !important;
+          color: #e2e8f0 !important;
           border: 1px solid var(--border-subtle);
-          border-radius: 12px;
-          padding: 20px;
-          margin: 24px 0;
+          border-radius: 16px;
+          padding: 28px 32px;
+          margin: 32px 0;
           overflow-x: auto;
           font-family: 'JetBrains Mono', monospace;
           font-size: 0.95rem;
-          line-height: 1.6;
-          color: #e2e8f0;
-          box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+          line-height: 1.7;
+          box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);
+          position: relative;
+        }
+        .explanation-text pre::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          border-radius: 16px;
+          padding: 1px;
+          background: linear-gradient(to bottom right, var(--accent-soft), transparent, var(--accent-soft));
+          -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+          mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+          -webkit-mask-composite: xor;
+          mask-composite: exclude;
+          opacity: 0.4;
+          pointer-events: none;
         }
 
         .explanation-text code {

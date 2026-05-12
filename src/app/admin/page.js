@@ -115,7 +115,7 @@ export default function AdminDashboard() {
     try {
       const [articlesRes, interviewsRes, techRes] = await Promise.all([
         supabase.from('articles').select('id, title, slug, published, created_at').order('created_at', { ascending: false }),
-        supabase.from('interview_questions').select('id, question, difficulty, stack, created_at').order('created_at', { ascending: false }),
+        supabase.from('interview_questions').select('id, slug, question, difficulty, stack, created_at').order('created_at', { ascending: false }),
         supabase.from('tech_stacks').select('id'),
       ])
 
@@ -273,7 +273,7 @@ export default function AdminDashboard() {
                   </div>
                 </div>
                 <div style={S.rowActions}>
-                  <Link href={`/admin/${item.type === 'article' ? 'articles' : 'interviews'}/${item.id}`} style={S.rowBtn}
+                  <Link href={`/admin/${item.type === 'article' ? 'articles' : 'interviews'}/${item.slug}`} style={S.rowBtn}
                     onMouseEnter={e => { e.currentTarget.style.color = 'var(--accent)'; e.currentTarget.style.background = 'rgba(124,58,237,0.1)' }}
                     onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'transparent' }}
                   ><Pencil size={14} /></Link>

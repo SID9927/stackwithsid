@@ -104,7 +104,7 @@ const LineHeight = Extension.create({
   addGlobalAttributes() {
     return [
       {
-        types: ['paragraph', 'heading'],
+        types: ['paragraph', 'heading', 'listItem', 'bulletList', 'orderedList', 'blockquote'],
         attributes: {
           lineHeight: {
             default: null,
@@ -118,8 +118,8 @@ const LineHeight = Extension.create({
   addCommands() {
     return {
       setLineHeight: (lh) => ({ commands }) => {
-        commands.updateAttributes('paragraph', { lineHeight: lh })
-        commands.updateAttributes('heading', { lineHeight: lh })
+        const types = ['paragraph', 'heading', 'listItem', 'bulletList', 'orderedList', 'blockquote']
+        types.forEach(type => commands.updateAttributes(type, { lineHeight: lh }))
         return true
       },
     }
@@ -259,7 +259,7 @@ function LinkDialog({ onInsert, onClose, initialText }) {
 }
 
 export default function RichTextEditor({ value, onChange, placeholder = 'Start writing...', label = 'Rich Text Editor', compact = false }) {
-  const [lineHeight, setLineHeight] = useState('1.8')
+  const [lineHeight, setLineHeight] = useState('1.6')
   const [showTablePicker, setShowTablePicker] = useState(false)
   const [showCalloutMenu, setShowCalloutMenu] = useState(false)
   const [showLinkDialog, setShowLinkDialog] = useState(false)
@@ -277,7 +277,7 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Start w
       StarterKit.configure({
         history: true,
         heading: { levels: [2, 3] },
-        codeBlock: { HTMLAttributes: { class: 'article-code-block' } },
+        codeBlock: { HTMLAttributes: { class: 'article-code-block', spellcheck: 'false' } },
         blockquote: { HTMLAttributes: { class: 'article-blockquote' } },
         link: false,
       }),
@@ -297,7 +297,12 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Start w
     ],
     content: value || '',
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
-    editorProps: { attributes: { class: `rich-editor-content ${compact ? 'compact' : ''}` } },
+    editorProps: { 
+      attributes: { 
+        class: `rich-editor-content ${compact ? 'compact' : ''}`,
+        spellcheck: 'false'
+      } 
+    },
     immediatelyRender: false,
   })
 
@@ -885,7 +890,7 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Start w
           min-height: 300px;
           padding: 32px 36px;
           outline: none; caret-color: var(--accent);
-          color: var(--text-secondary); line-height: 1.8;
+          color: var(--text-secondary); line-height: 1.6;
           font-size: 1.1rem; font-family: "DM Sans", sans-serif;
           border-radius: 0 0 20px 20px;
           transition: all 0.3s;
@@ -914,9 +919,9 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Start w
         }
 
         /* Headings */
-        .rich-editor-content h1 { font-family: Syne, sans-serif; font-size: 2.6rem; font-weight: 800; margin: 48px 0 20px; color: var(--text-primary); letter-spacing: -0.03em; line-height: 1.1; }
-        .rich-editor-content h2 { font-family: Syne, sans-serif; font-size: 2rem; font-weight: 700; margin: 40px 0 18px; color: var(--text-primary); letter-spacing: -0.02em; line-height: 1.15; }
-        .rich-editor-content h3 { font-family: Syne, sans-serif; font-size: 1.4rem; font-weight: 700; margin: 32px 0 14px; color: var(--text-primary); }
+        .rich-editor-content h1 { font-family: Syne, sans-serif; font-size: 2.6rem; font-weight: 800; margin: 32px 0 16px; color: var(--text-primary); letter-spacing: -0.03em; line-height: 1.1; }
+        .rich-editor-content h2 { font-family: Syne, sans-serif; font-size: 2rem; font-weight: 700; margin: 28px 0 12px; color: var(--text-primary); letter-spacing: -0.02em; line-height: 1.15; }
+        .rich-editor-content h3 { font-family: Syne, sans-serif; font-size: 1.4rem; font-weight: 700; margin: 24px 0 10px; color: var(--text-primary); }
 
         /* Inline */
         .rich-editor-content strong { color: var(--text-primary); font-weight: 700; }
@@ -934,15 +939,39 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Start w
 
         /* Code Block */
         .rich-editor-content pre {
-          background: var(--bg-elevated); border: 1px solid var(--border-subtle);
-          border-radius: 16px; padding: 28px 32px; margin: 32px 0; overflow-x: auto;
-          box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+          background: #0d0d12 !important; 
+          color: #e2e8f0 !important;
+          caret-color: #e2e8f0 !important;
+          border: 1px solid var(--border-subtle);
+          border-radius: 16px; 
+          padding: 28px 32px; 
+          margin: 32px 0; 
+          overflow-x: auto;
+          box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);
+          position: relative;
+        }
+        .rich-editor-content pre * {
+          color: #e2e8f0 !important;
+        }
+        .rich-editor-content pre::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          border-radius: 16px;
+          padding: 1px;
+          background: linear-gradient(to bottom right, var(--accent-soft), transparent, var(--accent-soft));
+          -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+          mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+          -webkit-mask-composite: xor;
+          mask-composite: exclude;
+          opacity: 0.3;
+          pointer-events: none;
         }
         .rich-editor-content pre code { background: none; color: var(--text-primary); padding: 0; font-size: inherit; line-height: 1.7; opacity: 0.95; }
 
         /* Lists */
-        .rich-editor-content ul, .rich-editor-content ol { padding-left: 28px; margin-bottom: 24px; }
-        .rich-editor-content li { margin-bottom: 8px; line-height: 1.7; }
+        .rich-editor-content ul, .rich-editor-content ol { padding-left: 28px; margin-bottom: 16px; }
+        .rich-editor-content li { margin-bottom: 4px; line-height: 1.5; }
         .rich-editor-content ul li { list-style-type: disc; }
         .rich-editor-content ol li { list-style-type: decimal; }
 

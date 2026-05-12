@@ -2,9 +2,33 @@ import { Suspense } from 'react'
 import { supabase } from '@/lib/supabase'
 import InterviewClient from '@/components/interview/InterviewClient'
 
-export const metadata = {
-  title: 'Interview Prep',
-  description: 'Curated interview Q&As for React, Node.js, DSA, System Design and more. Filter by stack and difficulty.',
+export async function generateMetadata({ searchParams }) {
+  const { q } = await searchParams
+  
+  if (q) {
+    const { data } = await supabase
+      .from('interview_questions')
+      .select('question, stack, difficulty')
+      .or(`slug.eq.${q},id.eq.${q}`)
+      .maybeSingle()
+      
+    if (data) {
+      return {
+        title: `${data.question} | Interview Prep`,
+        description: `Learn ${data.stack} interview questions: ${data.question} (${data.difficulty} level).`,
+        openGraph: {
+          title: data.question,
+          description: `Learn how to answer: "${data.question}" with our simplified guide on ${data.stack}.`,
+          type: 'article',
+        }
+      }
+    }
+  }
+  
+  return {
+    title: 'Interview Prep | SidStack',
+    description: 'Curated interview Q&As for React, Node.js, DSA, System Design and more.',
+  }
 }
 
 // Force Next.js to dynamically render this page on every request
@@ -21,7 +45,7 @@ export default async function InterviewPage() {
     : { data: [] }
 
   return (
-    <Suspense fallback={<div className="loading-state">Loading Mastery...</div>}>
+    <Suspense fallback={<div className="loading-state">Loading Interview Prep...</div>}>
       <InterviewClient initialQuestions={questions || []} />
     </Suspense>
   )
