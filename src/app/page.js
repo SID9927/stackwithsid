@@ -14,7 +14,7 @@ import CTABanner from '@/components/home/CTABanner'
 // ── Data Constants ──────────────────────────────────────────────────
 const STATS_INITIAL = [
   { label: 'Articles',   value: '50+',  icon: FileText },
-  // { label: 'Dev Tools',  value: '30+',  icon: Wrench },
+  { label: 'Dev Tools',  value: '5+',   icon: Wrench },
   { label: 'Q&As',       value: '200+', icon: Zap },
   // { label: 'Community',  value: '1K+',  icon: Users },
 ]
@@ -94,8 +94,10 @@ export default function HomePage() {
           sb.from('tech_stacks').select('name').order('name')
         ])
 
+        const totalToolsCount = (toolsCount || 0) + 1 // Increment by 1 for our premium custom compressor
         setStats([
           { label: 'Articles',   value: articlesCount ? `${articlesCount}+` : '10+',  icon: FileText },
+          { label: 'Dev Tools',  value: totalToolsCount ? `${totalToolsCount}` : '5+',  icon: Wrench },
           { label: 'Q&As',       value: interviewCount ? `${interviewCount}+` : '50+', icon: Zap },
         ])
 
