@@ -72,7 +72,7 @@ export default function RootLayout({ children }) {
       suppressHydrationWarning
       className={`${syne.variable} ${dmSans.variable} ${jetbrainsMono.variable}`}
     >
-      <body className="noise">
+      <body className="noise" suppressHydrationWarning>
         <ThemeProvider>
           <ConditionalLayout>
             {children}
