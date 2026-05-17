@@ -35,6 +35,7 @@ export default function InterviewClient({ initialQuestions }) {
   const [view, setView] = useState('hub')
   const [activeFilter, setActiveFilter] = useState({ type: null, value: null })
   const [subTab, setSubTab] = useState('path') // 'path', 'frequent', 'random'
+  const [difficultyFilter, setDifficultyFilter] = useState('all') // 'all', 'Beginner', 'Intermediate', 'Advanced'
   const [selectedId, setSelectedId] = useState(qId || null)
   const [query, setQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
@@ -56,7 +57,7 @@ export default function InterviewClient({ initialQuestions }) {
         setSelectedId(question.id)
         setView('list')
         // Automatically filter by the tech stack of this question
-        if (question.stack) {
+        if (question.stack && (activeFilter.type !== 'tech' || activeFilter.value !== question.stack)) {
           setActiveFilter({ type: 'tech', value: question.stack })
         }
       }
@@ -64,7 +65,7 @@ export default function InterviewClient({ initialQuestions }) {
       // Default to first if none in URL
       setSelectedId(questions[0].id)
     }
-  }, [qId, questions])
+  }, [qId, questions, activeFilter])
 
   // Update currentUrl for sharing whenever selectedId changes
   useEffect(() => {
@@ -232,7 +233,8 @@ export default function InterviewClient({ initialQuestions }) {
       const matchesFilter = !activeFilter.value || 
                           (activeFilter.type === 'tech' ? q.stack === activeFilter.value : q.company === activeFilter.value)
       const matchesQuery = !query || q.question?.toLowerCase().includes(query.toLowerCase())
-      return matchesFilter && matchesQuery
+      const matchesDifficulty = difficultyFilter === 'all' || q.difficulty === difficultyFilter
+      return matchesFilter && matchesQuery && matchesDifficulty
     })
 
     if (subTab === 'path') {
@@ -245,7 +247,7 @@ export default function InterviewClient({ initialQuestions }) {
     }
 
     return list
-  }, [questions, activeFilter, query, subTab])
+  }, [questions, activeFilter, query, subTab, difficultyFilter])
 
   const paginatedList = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage
@@ -260,10 +262,14 @@ export default function InterviewClient({ initialQuestions }) {
 
   useEffect(() => {
     if (filtered.length > 0) {
-      setSelectedId(filtered[0].id)
+      // Only reset selectedId to the first question if the currently selected question is not in the filtered list
+      const isAlreadyInFilteredList = filtered.some(q => q.id === selectedId)
+      if (!isAlreadyInFilteredList) {
+        setSelectedId(filtered[0].id)
+      }
       setCurrentPage(1)
     }
-  }, [activeFilter, subTab])
+  }, [activeFilter, subTab, difficultyFilter])
 
   const handleSelectFilter = (type, value) => {
     setActiveFilter({ type, value })
@@ -381,9 +387,17 @@ export default function InterviewClient({ initialQuestions }) {
                     </div>
                     <div className="sub-tab-switcher">
                       <button className={subTab === 'path' ? 'active' : ''} onClick={() => setSubTab('path')}>Path</button>
-                      <button className={subTab === 'frequent' ? 'active' : ''} onClick={() => setSubTab('frequent')}>Frequent</button>
-                      <button className={subTab === 'random' ? 'active' : ''} onClick={() => setSubTab('random')}>Random</button>
+                      <button className={subTab === 'frequent' ? 'active' : ''} onClick={() => { setSubTab('frequent'); setDifficultyFilter('all'); }}>Frequent</button>
+                      <button className={subTab === 'random' ? 'active' : ''} onClick={() => { setSubTab('random'); setDifficultyFilter('all'); }}>Random</button>
                     </div>
+                    {subTab === 'path' && (
+                      <div className="difficulty-switcher">
+                        <button className={difficultyFilter === 'all' ? 'active' : ''} onClick={() => setDifficultyFilter('all')}>All</button>
+                        <button className={difficultyFilter === 'Beginner' ? 'active beginner' : 'beginner'} onClick={() => setDifficultyFilter('Beginner')}>Beginner</button>
+                        <button className={difficultyFilter === 'Intermediate' ? 'active intermediate' : 'intermediate'} onClick={() => setDifficultyFilter('Intermediate')}>Intermediate</button>
+                        <button className={difficultyFilter === 'Advanced' ? 'active advanced' : 'advanced'} onClick={() => setDifficultyFilter('Advanced')}>Advanced</button>
+                      </div>
+                    )}
                   </div>
                   <div className="question-list scrollbar-hide">
                     {paginatedList.map((q, i) => (
@@ -562,7 +576,7 @@ export default function InterviewClient({ initialQuestions }) {
 
         .split-layout { 
           display: grid; 
-          grid-template-columns: 320px 1fr 280px; 
+          grid-template-columns: 320px minmax(0, 1fr) 280px; 
           gap: 24px; 
           align-items: start;
         }
@@ -587,7 +601,7 @@ export default function InterviewClient({ initialQuestions }) {
           .mobile-list-trigger { display: none !important; }
         }
 
-        .detail-pane { min-height: 500px; }
+        .detail-pane { min-height: 500px; min-width: 0; }
 
         .detail-sidebar {
           position: sticky;
@@ -631,6 +645,37 @@ export default function InterviewClient({ initialQuestions }) {
         }
         .sub-tab-switcher button:hover:not(.active) { color: var(--text-primary); }
 
+        .difficulty-switcher {
+          display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; 
+          background: var(--bg-primary); padding: 3px; border-radius: 10px; margin-top: 10px;
+        }
+        .difficulty-switcher button {
+          background: none; border: none; padding: 6px 2px; border-radius: 7px; 
+          font-size: 0.7rem; font-weight: 700; color: var(--text-muted); cursor: pointer;
+          transition: all 0.2s ease;
+          text-align: center;
+        }
+        .difficulty-switcher button.active {
+          background: var(--bg-card); color: var(--text-primary);
+          box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+        .difficulty-switcher button.active.beginner {
+          color: #22c55e;
+          background: rgba(34, 197, 94, 0.1);
+          border: 1px solid rgba(34, 197, 94, 0.2);
+        }
+        .difficulty-switcher button.active.intermediate {
+          color: #eab308;
+          background: rgba(234, 179, 8, 0.1);
+          border: 1px solid rgba(234, 179, 8, 0.2);
+        }
+        .difficulty-switcher button.active.advanced {
+          color: #ef4444;
+          background: rgba(239, 68, 68, 0.1);
+          border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+        .difficulty-switcher button:hover:not(.active) { color: var(--text-secondary); }
+
         .question-list { flex: 1; overflow-y: auto; padding: 12px; }
         
         .pane-footer {
@@ -653,12 +698,12 @@ export default function InterviewClient({ initialQuestions }) {
         .question-list::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 10px; }
 
         @media (max-width: 1200px) {
-          .split-layout { grid-template-columns: 300px 1fr; }
+          .split-layout { grid-template-columns: 300px minmax(0, 1fr); }
           .detail-sidebar { display: none; }
         }
 
         @media (max-width: 1024px) {
-          .split-layout { grid-template-columns: 1fr; gap: 0; }
+          .split-layout { grid-template-columns: minmax(0, 1fr); gap: 0; }
           .master-pane { 
             position: fixed; inset: 0; z-index: 100; background: var(--bg-primary);
             height: 100vh; width: 100%; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);

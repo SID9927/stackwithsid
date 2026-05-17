@@ -175,6 +175,7 @@ export default function InterviewDetailView({ q, stats }) {
           padding: 28px 32px;
           margin: 32px 0;
           overflow-x: auto;
+          max-width: 100%;
           font-family: 'JetBrains Mono', monospace;
           font-size: 0.95rem;
           line-height: 1.7;
