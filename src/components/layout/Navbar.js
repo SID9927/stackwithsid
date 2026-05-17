@@ -11,7 +11,7 @@ import { supabase } from '@/lib/supabase'
 const NAV_LINKS = [
   { href: '/articles',  label: 'Articles',  icon: BookOpen },
   { href: '/interview', label: 'Interview',  icon: Zap },
-  // { href: '/tools',     label: 'Tools',      icon: Wrench },
+  { href: '/tools',     label: 'Tools',      icon: Wrench },
   // { href: '/discuss',   label: 'Discuss',    icon: MessageSquare },
   { href: '/videos',    label: 'Videos',     icon: PlayCircle },
   { href: '/contact',   label: 'Contact',    icon: Mail },
