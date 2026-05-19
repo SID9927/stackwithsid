@@ -26,7 +26,7 @@ export default function AdminFormStyles() {
         width: 100%;
         padding: 40px;
         box-sizing: border-box;
-        overflow-x: hidden;
+        overflow-x: clip; /* 'clip' clips visually without creating a scroll container, so position:sticky works */
       }
 
       .editor-sidebar {
