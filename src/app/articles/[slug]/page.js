@@ -41,19 +41,51 @@ export default async function ArticlePage({ params }) {
     : ''
   const calcReadTime = article.read_time || readingTime(article.content || '')
 
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    'headline': article.title,
+    'description': article.excerpt || article.title,
+    'datePublished': article.created_at,
+    'dateModified': article.updated_at || article.created_at,
+    'author': {
+      '@type': 'Person',
+      'name': 'Sid',
+      'url': 'https://stack.dsiddharth.in',
+    },
+    'publisher': {
+      '@type': 'Organization',
+      'name': 'SidStack',
+      'logo': {
+        '@type': 'ImageObject',
+        'url': 'https://stack.dsiddharth.in/icon.svg',
+      },
+    },
+    'mainEntityOfPage': {
+      '@type': 'WebPage',
+      '@id': `https://stack.dsiddharth.in/articles/${article.slug}`,
+    },
+  }
+
   return (
-    <ArticleDetailLayout
-      id={article.id}
-      title={article.title}
-      tags={article.tags || []}
-      category={article.category}
-      publishDate={publishDate}
-      readTime={calcReadTime}
-    >
-      <div
-        className="article-content-render"
-        dangerouslySetInnerHTML={{ __html: article.content || '<p>Content coming soon.</p>' }}
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-    </ArticleDetailLayout>
+      <ArticleDetailLayout
+        id={article.id}
+        title={article.title}
+        tags={article.tags || []}
+        category={article.category}
+        publishDate={publishDate}
+        readTime={calcReadTime}
+      >
+        <div
+          className="article-content-render"
+          dangerouslySetInnerHTML={{ __html: article.content || '<p>Content coming soon.</p>' }}
+        />
+      </ArticleDetailLayout>
+    </>
   )
 }

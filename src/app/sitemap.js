@@ -66,5 +66,20 @@ export default async function sitemap() {
     }
   }
 
-  return [...staticRoutes, ...articleRoutes]
+  // Fetch dynamic interview questions
+  const { data: interviewQuestions } = supabase
+    ? await supabase
+        .from('interview_questions')
+        .select('slug, updated_at')
+        .eq('published', true)
+    : { data: [] }
+
+  const interviewRoutes = (interviewQuestions || []).map((question) => ({
+    url: `${baseUrl}/interview?q=${question.slug}`,
+    lastModified: question.updated_at ? new Date(question.updated_at) : new Date(),
+    changeFrequency: 'weekly',
+    priority: 0.7,
+  }))
+
+  return [...staticRoutes, ...articleRoutes, ...interviewRoutes]
 }

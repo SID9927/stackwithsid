@@ -34,7 +34,10 @@ export async function generateMetadata({ searchParams }) {
 // Force Next.js to dynamically render this page on every request
 export const dynamic = 'force-dynamic'
 
-export default async function InterviewPage() {
+export default async function InterviewPage({ searchParams }) {
+  const resolvedSearchParams = await searchParams
+  const q = resolvedSearchParams?.q
+
   // Fetch real data from Supabase
   const { data: questions } = supabase
     ? await supabase
@@ -44,9 +47,60 @@ export default async function InterviewPage() {
         .order('created_at', { ascending: false })
     : { data: [] }
 
+  const allQuestions = questions || []
+  let jsonLd = null
+
+  if (q) {
+    const activeQuestion = allQuestions.find(question => question.slug === q || question.id === q)
+    if (activeQuestion) {
+      jsonLd = {
+        '@context': 'https://schema.org',
+        '@type': 'QAPage',
+        'mainEntity': {
+          '@type': 'Question',
+          'name': activeQuestion.question,
+          'text': activeQuestion.question,
+          'answerCount': 1,
+          'acceptedAnswer': {
+            '@type': 'Answer',
+            'text': activeQuestion.answer,
+            'upvoteCount': 1,
+            'url': `https://stack.dsiddharth.in/interview?q=${activeQuestion.slug}`,
+          },
+        },
+      }
+    }
+  }
+
+  if (!jsonLd && allQuestions.length > 0) {
+    const frequentQuestions = allQuestions.filter(question => question.is_frequent).slice(0, 10)
+    if (frequentQuestions.length > 0) {
+      jsonLd = {
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        'mainEntity': frequentQuestions.map(question => ({
+          '@type': 'Question',
+          'name': question.question,
+          'acceptedAnswer': {
+            '@type': 'Answer',
+            'text': question.answer,
+          },
+        })),
+      }
+    }
+  }
+
   return (
-    <Suspense fallback={<div className="loading-state">Loading Interview Prep...</div>}>
-      <InterviewClient initialQuestions={questions || []} />
-    </Suspense>
+    <>
+      {jsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      )}
+      <Suspense fallback={<div className="loading-state">Loading Interview Prep...</div>}>
+        <InterviewClient initialQuestions={allQuestions} />
+      </Suspense>
+    </>
   )
 }
