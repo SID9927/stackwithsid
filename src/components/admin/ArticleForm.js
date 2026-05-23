@@ -16,27 +16,53 @@ import RichTextEditor from '@/components/admin/RichTextEditor'
 import FormHeader from '@/components/admin/form/FormHeader'
 import FormActions from '@/components/admin/form/FormActions'
 import AdminFormStyles from '@/components/admin/form/AdminFormStyles'
-import ArticleTags from '@/components/admin/form/ArticleTags'
+import ArticleCategorization from '@/components/admin/form/ArticleCategorization'
 
 // Frontend Components for Preview
 import ArticleDetailLayout from '@/components/articles/ArticleDetailLayout'
 
 export default function ArticleForm({ initialData = null, isEdit = false }) {
   const router = useRouter()
-  const [formData, setFormData] = useState(initialData || {
-    title: '',
-    slug: '',
-    content: '',
-    excerpt: '',
-    published: false,
-    tags: []
+  const [formData, setFormData] = useState({
+    title: initialData?.title || '',
+    slug: initialData?.slug || '',
+    content: initialData?.content || '',
+    excerpt: initialData?.excerpt || '',
+    published: initialData?.published || false,
+    tags: initialData?.tags || [],
+    category: initialData?.category || ''
   })
+  const [categories, setCategories] = useState([])
   const [saving, setSaving] = useState(false)
   const [activeTab, setActiveTab] = useState('edit') // 'edit' | 'preview'
   const [tagInput, setTagInput] = useState('')
 
   useEffect(() => {
-    if (initialData) setFormData(initialData)
+    async function fetchCategories() {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('name')
+        .order('name', { ascending: true })
+      
+      if (!error && data) {
+        setCategories(data.map(c => c.name))
+      }
+    }
+    fetchCategories()
+  }, [])
+
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        title: initialData.title || '',
+        slug: initialData.slug || '',
+        content: initialData.content || '',
+        excerpt: initialData.excerpt || '',
+        published: initialData.published || false,
+        tags: initialData.tags || [],
+        category: initialData.category || ''
+      })
+    }
   }, [initialData])
 
   const handleTitleChange = (e) => {
@@ -154,12 +180,13 @@ export default function ArticleForm({ initialData = null, isEdit = false }) {
                   </div>
                 </div>
 
-                <ArticleTags 
-                  tags={formData.tags}
+                <ArticleCategorization 
+                  formData={formData}
+                  setFormData={setFormData}
+                  categories={categories}
+                  onCategoryAdded={(newCat) => setCategories(prev => [...prev, newCat].sort())}
                   tagInput={tagInput}
                   setTagInput={setTagInput}
-                  onAddTag={(tag) => setFormData({ ...formData, tags: [...formData.tags, tag] })}
-                  onRemoveTag={(tag) => setFormData({ ...formData, tags: formData.tags.filter(t => t !== tag) })}
                 />
               </aside>
             </motion.form>
@@ -186,6 +213,7 @@ export default function ArticleForm({ initialData = null, isEdit = false }) {
                 <ArticleDetailLayout 
                   title={formData.title || 'Article Title Placeholder'}
                   tags={formData.tags.length > 0 ? formData.tags : ['General']}
+                  category={formData.category || 'General'}
                   publishDate={new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
                   readTime={calculateReadTime(formData.content)}
                   stats={{ likes: 42, dislikes: 2, comments: 12 }}

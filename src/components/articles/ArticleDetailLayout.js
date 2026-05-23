@@ -1,6 +1,55 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import hljs from 'highlight.js/lib/core'
+import javascript from 'highlight.js/lib/languages/javascript'
+import typescript from 'highlight.js/lib/languages/typescript'
+import css from 'highlight.js/lib/languages/css'
+import json from 'highlight.js/lib/languages/json'
+import python from 'highlight.js/lib/languages/python'
+import sql from 'highlight.js/lib/languages/sql'
+import bash from 'highlight.js/lib/languages/bash'
+import markdown from 'highlight.js/lib/languages/markdown'
+import cpp from 'highlight.js/lib/languages/cpp'
+import csharp from 'highlight.js/lib/languages/csharp'
+import java from 'highlight.js/lib/languages/java'
+import go from 'highlight.js/lib/languages/go'
+import rust from 'highlight.js/lib/languages/rust'
+import php from 'highlight.js/lib/languages/php'
+import ruby from 'highlight.js/lib/languages/ruby'
+import xml from 'highlight.js/lib/languages/xml'
+import yaml from 'highlight.js/lib/languages/yaml'
+import plaintext from 'highlight.js/lib/languages/plaintext'
+
+// Register all languages
+hljs.registerLanguage('javascript', javascript)
+hljs.registerLanguage('js', javascript)
+hljs.registerLanguage('typescript', typescript)
+hljs.registerLanguage('ts', typescript)
+hljs.registerLanguage('css', css)
+hljs.registerLanguage('json', json)
+hljs.registerLanguage('python', python)
+hljs.registerLanguage('py', python)
+hljs.registerLanguage('sql', sql)
+hljs.registerLanguage('bash', bash)
+hljs.registerLanguage('sh', bash)
+hljs.registerLanguage('markdown', markdown)
+hljs.registerLanguage('md', markdown)
+hljs.registerLanguage('cpp', cpp)
+hljs.registerLanguage('csharp', csharp)
+hljs.registerLanguage('cs', csharp)
+hljs.registerLanguage('java', java)
+hljs.registerLanguage('go', go)
+hljs.registerLanguage('rust', rust)
+hljs.registerLanguage('rs', rust)
+hljs.registerLanguage('php', php)
+hljs.registerLanguage('ruby', ruby)
+hljs.registerLanguage('rb', ruby)
+hljs.registerLanguage('html', xml)
+hljs.registerLanguage('xml', xml)
+hljs.registerLanguage('yaml', yaml)
+hljs.registerLanguage('yml', yaml)
+hljs.registerLanguage('plaintext', plaintext)
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '@/lib/supabase'
 import ArticleSidebar from './ArticleSidebar'
@@ -15,7 +64,8 @@ export default function ArticleDetailLayout({
   children, 
   title, 
   tags, 
-  publishDate, 
+  category,
+  publishDate,
   readTime
 }) {
   const [stats, setStats] = useState({ likes: 0, comments: 0, isLiked: false, isBookmarked: false, recentComments: [] })
@@ -122,6 +172,13 @@ export default function ArticleDetailLayout({
       pre.parentNode.insertBefore(wrapper, pre)
       wrapper.appendChild(pre)
     })
+      // Highlight each code element
+      pres.forEach((pre) => {
+        const codeEl = pre.querySelector('code')
+        if (codeEl) {
+          try { hljs.highlightElement(codeEl) } catch (e) { /* ignore unknown lang */ }
+        }
+      })
   }, [children])
 
   useEffect(() => {
@@ -309,7 +366,7 @@ export default function ArticleDetailLayout({
       </div>
 
       <div className="main-container">
-        <ArticleHeader title={title} tags={tags} publishDate={publishDate} readTime={readTime} />
+        <ArticleHeader title={title} tags={tags} category={category} publishDate={publishDate} readTime={readTime} />
 
         <div className="article-layout lg:grid lg:grid-cols-[1fr_320px] lg:gap-[60px] items-start">
           {/* Main Content Column */}
@@ -440,25 +497,25 @@ export default function ArticleDetailLayout({
 
         .article-body {
           color: var(--text-secondary);
-          line-height: 1.65;
+          line-height: 1.8;
           font-size: 1.15rem;
         }
         .article-body h2 { 
           font-family: Syne, sans-serif; 
           font-size: 2rem; 
-          margin: 40px 0 20px; 
+          margin: 36px 0 18px; 
           font-weight: 700;
           letter-spacing: -0.02em;
           color: var(--text-primary);
         }
-        .article-body h3 { font-family: Syne, sans-serif; font-size: 1.4rem; font-weight: 700; color: var(--text-primary); margin: 32px 0 16px; }
-        .article-body p { margin-bottom: 28px; }
+        .article-body h3 { font-family: Syne, sans-serif; font-size: 1.4rem; font-weight: 700; color: var(--text-primary); margin: 28px 0 14px; }
+        .article-body p { margin-bottom: 24px; }
         .article-body strong { color: var(--text-primary); }
         .article-body em { font-style: italic; }
         .article-body a { color: var(--accent); text-decoration: underline; }
         .article-body blockquote {
           border-left: 4px solid var(--accent); padding: 16px 32px;
-          margin: 48px 0; font-style: italic; color: var(--text-muted);
+          margin: 40px 0; font-style: italic; color: var(--text-muted);
           font-size: 1.2rem; line-height: 1.6;
           background: rgba(124, 58, 237, 0.04); border-radius: 0 12px 12px 0;
         }
@@ -541,6 +598,25 @@ export default function ArticleDetailLayout({
           box-shadow: none !important;
           overflow-x: auto;
           position: relative;
+          -webkit-overflow-scrolling: touch;
+        }
+        .code-block-wrapper pre::-webkit-scrollbar {
+          height: 10px;
+        }
+        .code-block-wrapper pre::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.03);
+          border-radius: 10px;
+        }
+        .code-block-wrapper pre::-webkit-scrollbar-thumb {
+          background: rgba(124, 58, 237, 0.55);
+          border-radius: 10px;
+          border: 2px solid transparent;
+          background-clip: padding-box;
+        }
+        .code-block-wrapper pre::-webkit-scrollbar-thumb:hover {
+          background: var(--accent);
+          border: 1px solid transparent;
+          background-clip: padding-box;
         }
         .code-block-wrapper pre::before {
           display: none !important;
@@ -551,12 +627,94 @@ export default function ArticleDetailLayout({
           padding: 0 !important;
           font-size: 0.92rem !important;
           line-height: 1.7 !important;
+          font-family: 'JetBrains Mono', 'Fira Code', monospace !important;
         }
         .article-body ul, .article-body ol { padding-left: 28px; margin-bottom: 20px; }
+
+        /* ── Syntax Highlight Tokens ───────────────────────────── */
+        .hljs-keyword, .hljs-selector-tag, .hljs-literal, .hljs-section, .hljs-link { color: #c792ea !important; }
+        .hljs-function .hljs-keyword { color: #82aaff !important; }
+        .hljs-type, .hljs-class .hljs-title, .hljs-title.class_ { color: #ffcb6b !important; }
+        .hljs-title, .hljs-title.function_ { color: #82aaff !important; }
+        .hljs-string, .hljs-meta .hljs-string, .hljs-attribute, .hljs-symbol, .hljs-bullet, .hljs-addition { color: #c3e88d !important; }
+        .hljs-number, .hljs-variable.constant_, .hljs-template-variable { color: #f78c6c !important; }
+        .hljs-comment, .hljs-quote { color: #546e7a !important; font-style: italic !important; }
+        .hljs-deletion, .hljs-meta, .hljs-regexp { color: #ff5370 !important; }
+        .hljs-built_in, .hljs-builtin-name { color: #89ddff !important; }
+        .hljs-tag, .hljs-name { color: #f07178 !important; }
+        .hljs-attr { color: #ffcb6b !important; }
+        .hljs-params, .hljs-operator, .hljs-punctuation { color: #89ddff !important; }
+        .hljs-property { color: #80cbc4 !important; }
+        .hljs-variable { color: #eeffff !important; }
+        .hljs-selector-class { color: #ffcb6b !important; }
+        .hljs-selector-id { color: #82aaff !important; }
+        .hljs-selector-attr { color: #c3e88d !important; }
+        .hljs-subst { color: #eeffff !important; }
+        .hljs-emphasis { font-style: italic !important; }
+        .hljs-strong { font-weight: bold !important; }
         .article-body li { margin-bottom: 6px; line-height: 1.6; }
         .article-body ul li { list-style-type: disc; }
         .article-body ol li { list-style-type: decimal; }
         .article-body hr { border: none; border-top: 1px solid var(--border-subtle); margin: 48px 0; }
+
+        /* ── Article Images (user view) ───────────────────────────── */
+        .article-image {
+          display: block;
+          margin: 32px auto;
+          border-radius: 12px;
+          overflow: hidden;
+          max-width: 100%;
+        }
+        .article-image.align-left {
+          float: left;
+          margin: 8px 28px 20px 0;
+        }
+        .article-image.align-right {
+          float: right;
+          margin: 8px 0 20px 28px;
+        }
+        .article-image.align-center {
+          margin-left: auto;
+          margin-right: auto;
+        }
+        .article-image.align-full {
+          width: 100% !important;
+          margin-left: 0 !important;
+          margin-right: 0 !important;
+          border-radius: 16px;
+        }
+        .article-image img {
+          width: 100%;
+          height: auto;
+          display: block;
+          border-radius: 10px;
+          object-fit: cover;
+        }
+        .article-image figcaption {
+          font-size: 0.82rem;
+          font-style: italic;
+          color: var(--text-muted);
+          text-align: center;
+          padding: 8px 12px 4px;
+          line-height: 1.5;
+          background: rgba(0,0,0,0.25);
+          border-radius: 0 0 10px 10px;
+        }
+        /* Clear floats after images */
+        .article-body p + .article-image,
+        .article-image + p { clear: both; }
+        /* Mobile: all images go full width */
+        @media (max-width: 768px) {
+          .article-image,
+          .article-image.align-left,
+          .article-image.align-right,
+          .article-image.align-center {
+            float: none !important;
+            width: 100% !important;
+            margin: 24px 0 !important;
+            border-radius: 12px !important;
+          }
+        }
 
         /* Tables */
         .article-body table {

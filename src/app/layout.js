@@ -2,6 +2,8 @@ import { Syne, DM_Sans, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import { ThemeProvider } from '@/lib/ThemeProvider'
 import ConditionalLayout from '@/components/layout/ConditionalLayout'
+import { Suspense } from 'react'
+import AnalyticsTracker from '@/components/common/AnalyticsTracker'
 
 const syne = Syne({
   subsets:  ['latin'],
@@ -77,6 +79,9 @@ export default function RootLayout({ children }) {
           <ConditionalLayout>
             {children}
           </ConditionalLayout>
+          <Suspense fallback={null}>
+            <AnalyticsTracker />
+          </Suspense>
         </ThemeProvider>
       </body>
     </html>

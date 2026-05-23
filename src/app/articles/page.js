@@ -15,7 +15,7 @@ export default async function ArticlesPage() {
   // Query failed because 'read_time' column does not exist in the DB.
   // We remove it from the select.
   const { data: articles } = supabase
-    ? await supabase.from('articles').select('id, title, slug, excerpt, tags, created_at').eq('published', true).order('created_at', { ascending: false })
+    ? await supabase.from('articles').select('id, title, slug, excerpt, tags, category, created_at').eq('published', true).order('created_at', { ascending: false })
     : { data: [] }
 
   const allArticles = articles || []

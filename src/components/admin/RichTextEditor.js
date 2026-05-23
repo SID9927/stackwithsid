@@ -5,7 +5,8 @@ import { createPortal } from 'react-dom'
 import MobileSheet from '@/components/ui/MobileSheet'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useEditor, EditorContent, Extension, Mark, ReactNodeViewRenderer, NodeViewWrapper, NodeViewContent } from '@tiptap/react'
-import CodeBlock from '@tiptap/extension-code-block'
+import { CodeBlockLowlight } from '@tiptap/extension-code-block-lowlight'
+import { createLowlight, all } from 'lowlight'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
 import TextAlign from '@tiptap/extension-text-align'
@@ -19,8 +20,10 @@ import {
   Quote, Minus, Undo, Redo, Table as TableIcon,
   AlignLeft, AlignCenter, AlignRight, AlignJustify,
   ShieldCheck, Zap, Info, Star, Link2, Link2Off, ChevronDown,
-  Copy, Check
+  Copy, Check, Image as ImageIcon, Trash2, Maximize2
 } from 'lucide-react'
+import { Node, mergeAttributes } from '@tiptap/core'
+import { supabase } from '@/lib/supabase'
 
 // ── useIsMobile ───────────────────────────────────────────────────────────────
 function useIsMobile() {
@@ -332,9 +335,160 @@ function CodeBlockComponent({ node, updateAttributes }) {
   )
 }
 
-const CustomCodeBlock = CodeBlock.extend({
+// Create lowlight instance with ALL languages pre-registered
+const lowlight = createLowlight(all)
+
+const CustomCodeBlock = CodeBlockLowlight.extend({
   addNodeView() {
     return ReactNodeViewRenderer(CodeBlockComponent)
+  },
+})
+
+// ── Image Compression (canvas, no external package) ────────────────────────
+async function compressImage(file) {
+  if (file.size > 2 * 1024 * 1024) throw new Error('Image must be under 2 MB')
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onerror = reject
+    reader.onload = ({ target: { result } }) => {
+      const img = new window.Image()
+      img.onerror = reject
+      img.onload = () => {
+        let w = img.naturalWidth, h = img.naturalHeight
+        if (w > 1200) { h = Math.round(h * 1200 / w); w = 1200 }
+        const canvas = document.createElement('canvas')
+        canvas.width = w; canvas.height = h
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h)
+        const attempt = (q) => {
+          canvas.toBlob(blob => {
+            if (!blob) { reject(new Error('Compression failed')); return }
+            if (blob.size <= 100 * 1024 || q <= 0.05) resolve(blob)
+            else attempt(Math.max(q - 0.08, 0.05))
+          }, 'image/webp', q)
+        }
+        attempt(0.85)
+      }
+      img.src = result
+    }
+    reader.readAsDataURL(file)
+  })
+}
+
+async function uploadArticleImage(file) {
+  const blob = await compressImage(file)
+  const name = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}.webp`
+  const { error } = await supabase.storage
+    .from('article-images')
+    .upload(name, blob, { contentType: 'image/webp', cacheControl: '2592000', upsert: false })
+  if (error) throw new Error(error.message)
+  return supabase.storage.from('article-images').getPublicUrl(name).data.publicUrl
+}
+
+// ── ImageBlock Node View ────────────────────────────────────────────────────
+function ImageBlock({ node, updateAttributes, deleteNode, selected }) {
+  const { src, alt, align, width, caption } = node.attrs
+  const alignOpts = [
+    { v: 'left',   icon: <AlignLeft size={13} />,   title: 'Float Left' },
+    { v: 'center', icon: <AlignCenter size={13} />,  title: 'Center' },
+    { v: 'right',  icon: <AlignRight size={13} />,   title: 'Float Right' },
+    { v: 'full',   icon: <Maximize2 size={13} />,    title: 'Full Width' },
+  ]
+  const sizeOpts = ['25%', '50%', '75%', '100%']
+  return (
+    <NodeViewWrapper
+      as="figure"
+      className={`article-img-block align-${align}${selected ? ' img-selected' : ''}`}
+      style={align !== 'full' ? { width, display: 'block' } : { width: '100%', display: 'block' }}
+      data-drag-handle
+    >
+      <div className="img-block-inner">
+        {selected && (
+          <div className="img-toolbar" contentEditable={false}>
+            <div className="img-tb-group">
+              {alignOpts.map(o => (
+                <button key={o.v} type="button"
+                  className={`img-tb-btn ${align === o.v ? 'active' : ''}`}
+                  onMouseDown={e => { e.preventDefault(); updateAttributes({ align: o.v }) }}
+                  title={o.title}
+                >{o.icon}</button>
+              ))}
+            </div>
+            <span className="img-tb-sep" />
+            <div className="img-tb-group">
+              {sizeOpts.map(s => (
+                <button key={s} type="button"
+                  className={`img-tb-btn ${width === s ? 'active' : ''}`}
+                  onMouseDown={e => { e.preventDefault(); updateAttributes({ width: s }) }}
+                  title={`Width: ${s}`}
+                  style={{ fontSize: '0.68rem', fontFamily: 'var(--font-mono)', fontWeight: 700, minWidth: 34 }}
+                >{s}</button>
+              ))}
+            </div>
+            <span className="img-tb-sep" />
+            <button type="button" className="img-tb-btn danger"
+              onMouseDown={e => { e.preventDefault(); deleteNode() }}
+              title="Remove Image"
+            ><Trash2 size={13} /></button>
+          </div>
+        )}
+        <img src={src} alt={alt || ''} className="img-block-img" />
+      </div>
+      {(selected || caption) && (
+        <figcaption>
+          <input
+            type="text"
+            className="img-caption-input"
+            placeholder="Caption (optional)…"
+            value={caption || ''}
+            onChange={e => updateAttributes({ caption: e.target.value })}
+            onClick={e => e.stopPropagation()}
+          />
+        </figcaption>
+      )}
+    </NodeViewWrapper>
+  )
+}
+
+// ── Custom Image Node ───────────────────────────────────────────────────────
+const CustomImage = Node.create({
+  name: 'imageBlock',
+  group: 'block',
+  atom: true,
+  draggable: true,
+  selectable: true,
+  addAttributes() {
+    return {
+      src:     { default: null },
+      alt:     { default: '' },
+      align:   { default: 'center' },
+      width:   { default: '70%' },
+      caption: { default: '' },
+    }
+  },
+  parseHTML() {
+    return [{
+      tag: 'figure.article-image',
+      getAttrs: el => ({
+        src:     el.querySelector('img')?.getAttribute('src') || null,
+        alt:     el.querySelector('img')?.getAttribute('alt') || '',
+        align:   [...el.classList].find(c => c.startsWith('align-'))?.slice(6) || 'center',
+        width:   el.style.width || '70%',
+        caption: el.querySelector('figcaption')?.textContent || '',
+      })
+    }]
+  },
+  renderHTML({ HTMLAttributes }) {
+    const { src, alt, align, width, caption } = HTMLAttributes
+    const figAttrs = {
+      class: `article-image align-${align}`,
+      style: `width: ${align === 'full' ? '100%' : width}`,
+    }
+    const children = [['img', mergeAttributes({ src, alt: alt || '' })]]
+    if (caption) children.push(['figcaption', {}, caption])
+    return ['figure', figAttrs, ...children]
+  },
+  addNodeView() {
+    return ReactNodeViewRenderer(ImageBlock)
   },
 })
 
@@ -351,6 +505,8 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Start w
   const [showHeadingMenu, setShowHeadingMenu] = useState(false)
   const [showInlineMenu, setShowInlineMenu] = useState(false)
   const [selectedText, setSelectedText] = useState('')
+  const imgInputRef = useRef(null)
+  const [imgUploading, setImgUploading] = useState(false)
 
   const editor = useEditor({
     extensions: [
@@ -362,6 +518,8 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Start w
         link: false,
       }),
       CustomCodeBlock.configure({
+        lowlight,
+        defaultLanguage: 'plaintext',
         HTMLAttributes: { class: 'article-code-block', spellcheck: 'false' },
       }),
       Placeholder.configure({
@@ -376,6 +534,7 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Start w
       TableCell,
       LineHeight,
       FontSize,
+      CustomImage,
       Link.configure({ openOnClick: false, HTMLAttributes: { class: 'article-link', target: '_blank', rel: 'noopener noreferrer' } }),
     ],
     content: value || '',
@@ -392,8 +551,13 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Start w
   // Synchronize content when the value prop changes (crucial for async data loading)
   useEffect(() => {
     if (editor && value !== undefined && value !== editor.getHTML()) {
-      // Only set content if it's actually different to prevent cursor jumps
-      editor.commands.setContent(value || '', false)
+      // Only set content if it's actually different to prevent cursor jumps.
+      // Defer to a scheduler task to prevent flushSync warning during lifecycle hooks.
+      setTimeout(() => {
+        if (editor && !editor.isDestroyed && value !== editor.getHTML()) {
+          editor.commands.setContent(value || '', false)
+        }
+      }, 0)
     }
   }, [value, editor])
 
@@ -645,8 +809,54 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Start w
             />
           </ToolbarMenu>
         </div>
+
+        <Divider />
+
+        {/* Image Upload */}
+        <div className="tb-group">
+          <Btn
+            onClick={() => imgInputRef.current?.click()}
+            title={imgUploading ? 'Uploading…' : 'Insert Image'}
+            active={imgUploading}
+          >
+            {imgUploading
+              ? <span className="tb-text" style={{ fontSize: '0.62rem', letterSpacing: 0 }}>…</span>
+              : <ImageIcon size={16} />}
+          </Btn>
+        </div>
       </div> {/* End editor-sticky-header */}
       </div>
+
+      {/* ── IMAGE UPLOAD HELPERS ── */}
+      <input
+        ref={imgInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/gif,image/webp"
+        style={{ display: 'none' }}
+        onChange={async (e) => {
+          const file = e.target.files?.[0]
+          if (!file) return
+          e.target.value = ''
+          setImgUploading(true)
+          try {
+            const url = await uploadArticleImage(file)
+            editor.chain().focus().insertContent({
+              type: 'imageBlock',
+              attrs: { src: url, align: 'center', width: '70%' }
+            }).run()
+          } catch (err) {
+            alert(err.message || 'Failed to upload image')
+          } finally {
+            setImgUploading(false)
+          }
+        }}
+      />
+      {imgUploading && (
+        <div className="img-upload-toast">
+          <span className="img-upload-spinner" />
+          Compressing &amp; uploading…
+        </div>
+      )}
 
       {/* ── EDITOR AREA ── */}
       <EditorContent editor={editor} />
@@ -973,8 +1183,8 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Start w
           min-height: 300px;
           padding: 32px 36px;
           outline: none; caret-color: var(--accent);
-          color: var(--text-secondary); line-height: 1.6;
-          font-size: 1.1rem; font-family: "DM Sans", sans-serif;
+          color: var(--text-secondary); line-height: 1.8;
+          font-size: 1.15rem; font-family: "DM Sans", sans-serif;
           border-radius: 0 0 20px 20px;
           transition: all 0.3s;
           word-break: break-word;
@@ -988,29 +1198,29 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Start w
         @media (max-width: 768px) {
           .rich-editor-content {
             padding: 20px 16px;
-            font-size: 1rem;
+            font-size: 1.05rem;
           }
           .rich-editor-content.compact {
             min-height: 300px;
             padding: 18px 16px;
           }
         }
-        .rich-editor-content p { margin-bottom: 20px; }
+        .rich-editor-content p { margin-bottom: 24px; }
         .rich-editor-content p.is-editor-empty:first-child::before {
           content: attr(data-placeholder); color: var(--text-muted);
           pointer-events: none; height: 0; float: left; font-style: italic;
         }
 
         /* Headings */
-        .rich-editor-content h1 { font-family: Syne, sans-serif; font-size: 2.6rem; font-weight: 800; margin: 32px 0 16px; color: var(--text-primary); letter-spacing: -0.03em; line-height: 1.1; }
-        .rich-editor-content h2 { font-family: Syne, sans-serif; font-size: 2rem; font-weight: 700; margin: 28px 0 12px; color: var(--text-primary); letter-spacing: -0.02em; line-height: 1.15; }
-        .rich-editor-content h3 { font-family: Syne, sans-serif; font-size: 1.4rem; font-weight: 700; margin: 24px 0 10px; color: var(--text-primary); }
+        .rich-editor-content h1 { font-family: Syne, sans-serif; font-size: 2.6rem; font-weight: 800; margin: 36px 0 18px; color: var(--text-primary); letter-spacing: -0.03em; line-height: 1.1; }
+        .rich-editor-content h2 { font-family: Syne, sans-serif; font-size: 2rem; font-weight: 700; margin: 36px 0 18px; color: var(--text-primary); letter-spacing: -0.02em; line-height: 1.15; }
+        .rich-editor-content h3 { font-family: Syne, sans-serif; font-size: 1.4rem; font-weight: 700; margin: 28px 0 14px; color: var(--text-primary); }
 
         /* Inline */
         .rich-editor-content strong { color: var(--text-primary); font-weight: 700; }
         .rich-editor-content em { font-style: italic; }
         .rich-editor-content s { text-decoration: line-through; opacity: 0.6; }
-        .rich-editor-content code { background: var(--bg-elevated); color: var(--accent-soft); padding: 2px 8px; border-radius: 6px; font-family: var(--font-mono); font-size: 0.88em; }
+        .rich-editor-content code { background: var(--bg-elevated); color: var(--accent-soft); padding: 3px 8px; border-radius: 6px; font-family: var(--font-mono); font-size: 0.88em; }
 
         /* Blockquote */
         .rich-editor-content blockquote {
@@ -1115,6 +1325,25 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Start w
           box-shadow: none !important;
           overflow-x: auto;
           position: relative;
+          -webkit-overflow-scrolling: touch;
+        }
+        .code-block-wrapper pre::-webkit-scrollbar {
+          height: 10px;
+        }
+        .code-block-wrapper pre::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.03);
+          border-radius: 10px;
+        }
+        .code-block-wrapper pre::-webkit-scrollbar-thumb {
+          background: rgba(124, 58, 237, 0.55);
+          border-radius: 10px;
+          border: 2px solid transparent;
+          background-clip: padding-box;
+        }
+        .code-block-wrapper pre::-webkit-scrollbar-thumb:hover {
+          background: var(--accent);
+          border: 1px solid transparent;
+          background-clip: padding-box;
         }
         .code-block-wrapper pre::before {
           display: none !important;
@@ -1125,11 +1354,76 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Start w
           padding: 0 !important;
           font-size: 0.92rem !important;
           line-height: 1.7 !important;
+          font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace !important;
         }
 
+        /* ── Syntax Highlight Tokens (highlight.js / lowlight) ──────── */
+        .hljs-keyword,
+        .hljs-selector-tag,
+        .hljs-literal,
+        .hljs-section,
+        .hljs-link {
+          color: #c792ea !important; /* Purple — keywords */
+        }
+        .hljs-function .hljs-keyword { color: #82aaff !important; }
+        .hljs-type,
+        .hljs-class .hljs-title,
+        .hljs-title.class_ {
+          color: #ffcb6b !important; /* Yellow — types/classes */
+        }
+        .hljs-title,
+        .hljs-title.function_ {
+          color: #82aaff !important; /* Blue — function names */
+        }
+        .hljs-string,
+        .hljs-meta .hljs-string,
+        .hljs-attribute,
+        .hljs-symbol,
+        .hljs-bullet,
+        .hljs-addition {
+          color: #c3e88d !important; /* Green — strings */
+        }
+        .hljs-number,
+        .hljs-variable.constant_,
+        .hljs-template-variable {
+          color: #f78c6c !important; /* Orange — numbers/constants */
+        }
+        .hljs-comment,
+        .hljs-quote {
+          color: #546e7a !important; /* Muted gray — comments */
+          font-style: italic !important;
+        }
+        .hljs-deletion,
+        .hljs-meta,
+        .hljs-regexp {
+          color: #ff5370 !important; /* Red — deletions/meta */
+        }
+        .hljs-built_in,
+        .hljs-builtin-name {
+          color: #89ddff !important; /* Cyan — built-ins */
+        }
+        .hljs-tag,
+        .hljs-name {
+          color: #f07178 !important; /* Coral — HTML tags */
+        }
+        .hljs-attr {
+          color: #ffcb6b !important; /* Yellow — HTML attributes */
+        }
+        .hljs-params { color: #89ddff !important; }
+        .hljs-operator { color: #89ddff !important; }
+        .hljs-punctuation { color: #89ddff !important; }
+        .hljs-property { color: #80cbc4 !important; /* Teal — property names */ }
+        .hljs-variable { color: #eeffff !important; }
+        .hljs-selector-class { color: #ffcb6b !important; }
+        .hljs-selector-id { color: #82aaff !important; }
+        .hljs-selector-attr { color: #c3e88d !important; }
+        .hljs-subst { color: #eeffff !important; }
+        .hljs-emphasis { font-style: italic !important; }
+        .hljs-strong { font-weight: bold !important; }
+
         /* Lists */
-        .rich-editor-content ul, .rich-editor-content ol { padding-left: 28px; margin-bottom: 16px; }
-        .rich-editor-content li { margin-bottom: 4px; line-height: 1.5; }
+        .rich-editor-content ul, .rich-editor-content ol { padding-left: 28px; margin-bottom: 20px; }
+        .rich-editor-content li { margin-bottom: 6px; line-height: 1.6; }
         .rich-editor-content ul li { list-style-type: disc; }
         .rich-editor-content ol li { list-style-type: decimal; }
 
@@ -1173,7 +1467,30 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Start w
         .rich-editor-content table:hover .column-resize-handle {
           opacity: 0.8;
         }
-        .tableWrapper { overflow-x: auto; padding: 10px 0; }
+        .tableWrapper {
+          overflow-x: auto;
+          padding: 10px 0;
+          -webkit-overflow-scrolling: touch;
+        }
+        .tableWrapper::-webkit-scrollbar {
+          height: 8px !important;
+        }
+        .tableWrapper::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.01) !important;
+          border-radius: 10px;
+        }
+        .tableWrapper::-webkit-scrollbar-thumb {
+          background: rgba(124, 58, 237, 0.3) !important;
+          border-radius: 10px;
+          border: 2px solid transparent;
+          background-clip: padding-box;
+          transition: background-color 0.2s;
+        }
+        .tableWrapper::-webkit-scrollbar-thumb:hover {
+          background: var(--accent) !important;
+          border: 2px solid transparent;
+          background-clip: padding-box;
+        }
         .rich-editor-content tr:nth-child(even) td { background: rgba(255,255,255,0.01); }
 
         /* Table Alignment Support */
@@ -1209,6 +1526,115 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Start w
         .rich-editor-content .callout-warning strong { color: #f87171; }
         .rich-editor-content .callout p { margin-bottom: 8px; }
         .rich-editor-content .callout p:last-child { margin-bottom: 0; }
+
+        /* ── Image Block (editor) ─────────────────────────────────── */
+        .article-img-block {
+          display: block;
+          margin: 28px auto;
+          max-width: 100%;
+        }
+        .article-img-block.align-left  { margin-left: 0; margin-right: auto; }
+        .article-img-block.align-center { margin-left: auto; margin-right: auto; }
+        .article-img-block.align-right { margin-left: auto; margin-right: 0; }
+        .article-img-block.align-full  { width: 100% !important; margin-left: 0; margin-right: 0; }
+
+        .img-block-inner { position: relative; }
+
+        .img-toolbar {
+          position: absolute;
+          top: -46px;
+          left: 50%;
+          transform: translateX(-50%);
+          z-index: 200;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          background: var(--bg-elevated);
+          border: 1px solid var(--border-subtle);
+          border-radius: 12px;
+          padding: 5px 8px;
+          box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+          white-space: nowrap;
+        }
+        .img-tb-group { display: flex; gap: 2px; align-items: center; }
+        .img-tb-sep { width: 1px; height: 18px; background: var(--border-subtle); margin: 0 4px; flex-shrink: 0; }
+        .img-tb-btn {
+          display: flex; align-items: center; justify-content: center;
+          min-width: 28px; height: 28px; padding: 0 5px;
+          border-radius: 7px; border: 1px solid transparent;
+          background: transparent; color: var(--text-muted);
+          cursor: pointer; transition: all 0.12s; font-size: 0.8rem;
+        }
+        .img-tb-btn:hover { background: rgba(124,58,237,0.12); color: var(--accent); }
+        .img-tb-btn.active { background: rgba(124,58,237,0.18); color: var(--accent); border-color: rgba(124,58,237,0.3); }
+        .img-tb-btn.danger:hover { background: rgba(239,68,68,0.12); color: #ef4444; }
+
+        .img-block-img {
+          width: 100%;
+          display: block;
+          border-radius: 12px;
+          border: 1px solid var(--border-subtle);
+          object-fit: cover;
+          transition: outline 0.15s, box-shadow 0.15s;
+          outline: 2px solid transparent;
+        }
+        .article-img-block.img-selected .img-block-img {
+          outline: 2px solid var(--accent);
+          box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.15);
+        }
+
+        .article-img-block figcaption {
+          margin-top: 10px;
+          padding: 0;
+        }
+        .img-caption-input {
+          width: 100%;
+          background: transparent;
+          border: none;
+          color: var(--text-muted);
+          font-size: 0.85rem;
+          font-style: italic;
+          text-align: center;
+          padding: 6px 0;
+          outline: none;
+          transition: color 0.2s;
+        }
+        .img-caption-input:focus {
+          color: var(--text-secondary);
+        }
+        .img-caption-input::placeholder { color: rgba(255, 255, 255, 0.25); }
+
+        /* Upload toast */
+        .img-upload-toast {
+          position: fixed;
+          bottom: 32px;
+          right: 32px;
+          z-index: 9999;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          background: var(--bg-elevated);
+          border: 1px solid var(--accent-soft);
+          border-radius: 12px;
+          padding: 12px 18px;
+          color: var(--accent-soft);
+          font-size: 0.85rem;
+          font-weight: 600;
+          box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+          animation: toastSlide 0.25s ease;
+        }
+        @keyframes toastSlide {
+          from { transform: translateY(20px); opacity: 0; }
+          to   { transform: translateY(0);   opacity: 1; }
+        }
+        .img-upload-spinner {
+          width: 14px; height: 14px;
+          border: 2px solid rgba(124,58,237,0.3);
+          border-top-color: var(--accent);
+          border-radius: 50%;
+          animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
         /* ── Links ──────────────────────────────────────────────────── */
         .rich-editor-content a.article-link {

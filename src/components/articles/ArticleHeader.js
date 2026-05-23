@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import { ArrowLeft, Calendar, Clock } from 'lucide-react'
 import Link from 'next/link'
 
-export default function ArticleHeader({ title, tags = [], publishDate, readTime }) {
+export default function ArticleHeader({ title, tags = [], category, publishDate, readTime }) {
   return (
     <div style={{ position: 'relative', zIndex: 1 }}>
       <Link href="/articles" style={{ textDecoration: 'none' }}>
@@ -19,7 +19,17 @@ export default function ArticleHeader({ title, tags = [], publishDate, readTime 
 
       <div className="header-content">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-          <div style={{ display: 'flex', gap: '10px', marginBottom: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '24px', flexWrap: 'wrap' }}>
+            {category && (
+              <span className="badge" style={{
+                background: 'var(--gradient-purple)',
+                color: 'white',
+                fontWeight: '700',
+                border: 'none',
+                boxShadow: '0 2px 8px rgba(124, 58, 237, 0.3)',
+                padding: '5px 14px'
+              }}>{category}</span>
+            )}
             {tags.map(tag => (
               <span key={tag} className="badge badge-purple">{tag}</span>
             ))}

@@ -14,6 +14,25 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- ==============================================================================
+-- 1.5. CATEGORIES TABLE
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.categories (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL UNIQUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Public can view categories" 
+ON public.categories FOR SELECT 
+USING (true);
+
+CREATE POLICY "Admins can manage categories" 
+ON public.categories FOR ALL 
+USING (auth.role() = 'authenticated');
+
+-- ==============================================================================
 -- 2. ARTICLES TABLE
 -- ==============================================================================
 CREATE TABLE IF NOT EXISTS public.articles (
@@ -24,6 +43,7 @@ CREATE TABLE IF NOT EXISTS public.articles (
     excerpt TEXT,
     published BOOLEAN DEFAULT false,
     tags TEXT[] DEFAULT '{}',
+    category TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

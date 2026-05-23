@@ -1,110 +1,202 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef, useMemo } from 'react'
+import hljs from 'highlight.js/lib/core'
+import javascript from 'highlight.js/lib/languages/javascript'
+import typescript from 'highlight.js/lib/languages/typescript'
+import css from 'highlight.js/lib/languages/css'
+import json from 'highlight.js/lib/languages/json'
+import python from 'highlight.js/lib/languages/python'
+import sql from 'highlight.js/lib/languages/sql'
+import bash from 'highlight.js/lib/languages/bash'
+import markdown from 'highlight.js/lib/languages/markdown'
+import cpp from 'highlight.js/lib/languages/cpp'
+import csharp from 'highlight.js/lib/languages/csharp'
+import java from 'highlight.js/lib/languages/java'
+import go from 'highlight.js/lib/languages/go'
+import rust from 'highlight.js/lib/languages/rust'
+import php from 'highlight.js/lib/languages/php'
+import ruby from 'highlight.js/lib/languages/ruby'
+import xml from 'highlight.js/lib/languages/xml'
+import yaml from 'highlight.js/lib/languages/yaml'
+import plaintext from 'highlight.js/lib/languages/plaintext'
+
+hljs.registerLanguage('javascript', javascript)
+hljs.registerLanguage('js', javascript)
+hljs.registerLanguage('typescript', typescript)
+hljs.registerLanguage('ts', typescript)
+hljs.registerLanguage('css', css)
+hljs.registerLanguage('json', json)
+hljs.registerLanguage('python', python)
+hljs.registerLanguage('py', python)
+hljs.registerLanguage('sql', sql)
+hljs.registerLanguage('bash', bash)
+hljs.registerLanguage('sh', bash)
+hljs.registerLanguage('markdown', markdown)
+hljs.registerLanguage('md', markdown)
+hljs.registerLanguage('cpp', cpp)
+hljs.registerLanguage('csharp', csharp)
+hljs.registerLanguage('cs', csharp)
+hljs.registerLanguage('java', java)
+hljs.registerLanguage('go', go)
+hljs.registerLanguage('rust', rust)
+hljs.registerLanguage('rs', rust)
+hljs.registerLanguage('php', php)
+hljs.registerLanguage('ruby', ruby)
+hljs.registerLanguage('rb', ruby)
+hljs.registerLanguage('html', xml)
+hljs.registerLanguage('xml', xml)
+hljs.registerLanguage('yaml', yaml)
+hljs.registerLanguage('yml', yaml)
+hljs.registerLanguage('plaintext', plaintext)
 import { Sparkles, Info } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import CommentSection from '@/components/articles/CommentSection'
 
+const langMap = {
+  plaintext: 'Plain Text',
+  html: 'HTML / XML',
+  xml: 'XML',
+  yaml: 'YAML',
+  yml: 'YAML',
+  javascript: 'JavaScript',
+  js: 'JavaScript',
+  typescript: 'TypeScript',
+  ts: 'TypeScript',
+  css: 'CSS',
+  json: 'JSON',
+  python: 'Python',
+  py: 'Python',
+  sql: 'SQL',
+  bash: 'Bash / Shell',
+  sh: 'Bash',
+  markdown: 'Markdown',
+  md: 'Markdown',
+  cpp: 'C++',
+  csharp: 'C#',
+  cs: 'C#',
+  java: 'Java',
+  go: 'Go',
+  rust: 'Rust',
+  rs: 'Rust',
+  php: 'PHP',
+  ruby: 'Ruby',
+  rb: 'Ruby',
+  dockerfile: 'Dockerfile',
+}
+
+function wrapCodeBlocks(html) {
+  if (!html) return ''
+  return html.replace(/<pre([^>]*)>\s*<code([^>]*)>([\s\S]*?)<\/code>\s*<\/pre>/gi, (match, preAttrs, codeAttrs, codeContent) => {
+    let lang = 'Plain Text'
+    const classMatch = codeAttrs.match(/class="([^"]*)"/i)
+    if (classMatch) {
+      const classes = classMatch[1].split(' ')
+      const lClass = classes.find(c => c.startsWith('language-'))
+      if (lClass) {
+        const lName = lClass.replace('language-', '')
+        lang = langMap[lName.toLowerCase()] || lName.toUpperCase()
+      }
+    }
+
+    return `
+      <div class="code-block-wrapper">
+        <div class="code-block-header">
+          <div class="code-block-header-left">
+            <span class="dot red"></span>
+            <span class="dot yellow"></span>
+            <span class="dot green"></span>
+            <span class="code-block-lang-label">${lang}</span>
+          </div>
+          <button type="button" class="code-block-copy-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+            <span>Copy Code</span>
+          </button>
+        </div>
+        <pre${preAttrs}><code${codeAttrs}>${codeContent}</code></pre>
+      </div>
+    `.trim()
+  })
+}
+
 export default function InterviewDetailView({ q, stats }) {
+  const explanationRef = useRef(null)
+
+  const formattedHtml = useMemo(() => {
+    if (!q || !q.answer) return ''
+
+    const formatRichText = (text) => {
+      if (!text) return ''
+      return text
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/`(.*?)`/g, '<code>$1</code>')
+        .replace(/(\/\/\s.*)/g, '<span class="code-comment">$1</span>')
+    }
+
+    let html = ''
+    if (q.answer.includes('<p>') || q.answer.includes('<pre>')) {
+      html = formatRichText(q.answer)
+    } else {
+      html = q.answer
+        .split('\n\n')
+        .map(para => `<p>${formatRichText(para)}</p>`)
+        .join('')
+    }
+
+    return wrapCodeBlocks(html)
+  }, [q?.id, q?.answer])
+
   useEffect(() => {
     if (!q || !q.answer) return
 
-    const container = document.querySelector('.explanation-text')
+    const container = explanationRef.current
     if (!container) return
 
-    const pres = container.querySelectorAll('pre')
-    pres.forEach((pre) => {
-      if (pre.parentElement.classList.contains('code-block-wrapper')) return
-
-      const code = pre.querySelector('code')
-      let lang = 'Plain Text'
-      if (code) {
-        const classes = Array.from(code.classList)
-        const langClass = classes.find(c => c.startsWith('language-'))
-        if (langClass) {
-          const l = langClass.replace('language-', '')
-          const langMap = {
-            plaintext: 'Plain Text',
-            html: 'HTML / XML',
-            xml: 'XML',
-            yaml: 'YAML',
-            yml: 'YAML',
-            javascript: 'JavaScript',
-            js: 'JavaScript',
-            typescript: 'TypeScript',
-            ts: 'TypeScript',
-            css: 'CSS',
-            json: 'JSON',
-            python: 'Python',
-            py: 'Python',
-            sql: 'SQL',
-            bash: 'Bash / Shell',
-            sh: 'Bash',
-            markdown: 'Markdown',
-            md: 'Markdown',
-            cpp: 'C++',
-            csharp: 'C#',
-            cs: 'C#',
-            java: 'Java',
-            go: 'Go',
-            rust: 'Rust',
-            rs: 'Rust',
-            php: 'PHP',
-            ruby: 'Ruby',
-            rb: 'Ruby',
-            dockerfile: 'Dockerfile',
-          }
-          lang = langMap[l.toLowerCase()] || l.toUpperCase()
-        }
+    // 1. Highlight all code elements that are not yet highlighted
+    const codes = container.querySelectorAll('pre code')
+    codes.forEach((codeEl) => {
+      if (!codeEl.classList.contains('hljs')) {
+        try { hljs.highlightElement(codeEl) } catch (e) { /* ignore unknown lang */ }
       }
-
-      const wrapper = document.createElement('div')
-      wrapper.className = 'code-block-wrapper'
-
-      const header = document.createElement('div')
-      header.className = 'code-block-header'
-
-      const left = document.createElement('div')
-      left.className = 'code-block-header-left'
-      left.innerHTML = `
-        <span class="dot red"></span>
-        <span class="dot yellow"></span>
-        <span class="dot green"></span>
-        <span class="code-block-lang-label">${lang}</span>
-      `
-
-      const copyBtn = document.createElement('button')
-      copyBtn.type = 'button'
-      copyBtn.className = 'code-block-copy-btn'
-      copyBtn.innerHTML = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
-        <span>Copy Code</span>
-      `
-
-      copyBtn.addEventListener('click', () => {
-        const textToCopy = code ? code.textContent : pre.textContent
-        navigator.clipboard.writeText(textToCopy || '').then(() => {
-          copyBtn.innerHTML = `
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check text-green"><polyline points="20 6 9 17 4 12"/></svg>
-            <span class="text-green">Copied!</span>
-          `
-          setTimeout(() => {
-            copyBtn.innerHTML = `
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
-              <span>Copy Code</span>
-            `
-          }, 2000)
-        })
-      })
-
-      header.appendChild(left)
-      header.appendChild(copyBtn)
-      wrapper.appendChild(header)
-
-      pre.parentNode.insertBefore(wrapper, pre)
-      wrapper.appendChild(pre)
     })
-  }, [q])
+
+    // 2. Setup event delegation for copy buttons
+    const handleCopy = (e) => {
+      const btn = e.target.closest('.code-block-copy-btn')
+      if (!btn) return
+
+      const wrapper = btn.closest('.code-block-wrapper')
+      if (!wrapper) return
+
+      const codeEl = wrapper.querySelector('pre code')
+      const textToCopy = codeEl ? codeEl.textContent : ''
+
+      navigator.clipboard.writeText(textToCopy).then(() => {
+        const span = btn.querySelector('span')
+        const svg = btn.querySelector('svg')
+        const originalSvg = svg ? svg.outerHTML : `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`
+        const originalText = span ? span.textContent : 'Copy Code'
+
+        btn.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check text-green"><polyline points="20 6 9 17 4 12"/></svg>
+          <span class="text-green">Copied!</span>
+        `
+        setTimeout(() => {
+          if (btn.isConnected) {
+            btn.innerHTML = `
+              ${originalSvg}
+              <span>${originalText}</span>
+            `
+          }
+        }, 2000)
+      })
+    }
+
+    container.addEventListener('click', handleCopy)
+    return () => {
+      container.removeEventListener('click', handleCopy)
+    }
+  }, [q?.id, q?.answer])
 
   if (!q) return (
     <div className="empty-detail">
@@ -136,25 +228,11 @@ export default function InterviewDetailView({ q, stats }) {
           <div className="section-label">
             <Sparkles size={16} className="text-accent" /> Simplified Explanation
           </div>
-          <div className="explanation-text">
-            {(() => {
-              const formatRichText = (text) => {
-                if (!text) return '';
-                return text
-                  .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                  .replace(/`(.*?)`/g, '<code>$1</code>')
-                  .replace(/(\/\/\s.*)/g, '<span class="code-comment">$1</span>');
-              };
-
-              if (q.answer?.includes('<p>') || q.answer?.includes('<pre>')) {
-                return <div dangerouslySetInnerHTML={{ __html: formatRichText(q.answer) }} />;
-              }
-
-              return q.answer?.split('\n\n').map((para, i) => (
-                <p key={i} dangerouslySetInnerHTML={{ __html: formatRichText(para) }} />
-              ));
-            })()}
-          </div>
+          <div 
+            className="explanation-text" 
+            ref={explanationRef}
+            dangerouslySetInnerHTML={{ __html: formattedHtml }}
+          />
         </div>
 
         {/* Hiring Insight (Blockquote Style) */}
@@ -225,13 +303,22 @@ export default function InterviewDetailView({ q, stats }) {
           display: flex; align-items: center; gap: 8px; color: var(--accent-soft); font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 24px;
         }
 
-        .explanation-text { color: var(--text-secondary); line-height: 1.8; font-size: 1.1rem; }
+        .explanation-text { color: var(--text-secondary); line-height: 1.8; font-size: 1.15rem; }
         .explanation-text p { margin-bottom: 24px; }
+        .explanation-text h2 { font-family: Syne, sans-serif; font-size: 2rem; font-weight: 700; margin: 36px 0 18px; color: var(--text-primary); letter-spacing: -0.02em; line-height: 1.15; }
+        .explanation-text h3 { font-family: Syne, sans-serif; font-size: 1.4rem; font-weight: 700; margin: 28px 0 14px; color: var(--text-primary); }
         .explanation-text strong { color: var(--text-primary); font-weight: 700; }
-        .explanation-text ul, .explanation-text ol { padding-left: 28px; margin-bottom: 24px; }
-        .explanation-text li { margin-bottom: 8px; line-height: 1.7; }
+        .explanation-text em { font-style: italic; }
+        .explanation-text ul, .explanation-text ol { padding-left: 28px; margin-bottom: 20px; }
+        .explanation-text li { margin-bottom: 6px; line-height: 1.6; }
         .explanation-text ul li { list-style-type: disc; }
         .explanation-text ol li { list-style-type: decimal; }
+        .explanation-text blockquote {
+          border-left: 4px solid var(--accent); padding: 16px 32px;
+          margin: 40px 0; font-style: italic; color: var(--text-muted);
+          font-size: 1.2rem; line-height: 1.6;
+          background: rgba(124, 58, 237, 0.04); border-radius: 0 12px 12px 0;
+        }
 
         /* Tables */
         .explanation-text table {
@@ -351,6 +438,25 @@ export default function InterviewDetailView({ q, stats }) {
           font-family: 'JetBrains Mono', monospace;
           font-size: 0.95rem;
           line-height: 1.7;
+          -webkit-overflow-scrolling: touch;
+        }
+        .code-block-wrapper pre::-webkit-scrollbar {
+          height: 10px;
+        }
+        .code-block-wrapper pre::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.03);
+          border-radius: 10px;
+        }
+        .code-block-wrapper pre::-webkit-scrollbar-thumb {
+          background: rgba(124, 58, 237, 0.55);
+          border-radius: 10px;
+          border: 2px solid transparent;
+          background-clip: padding-box;
+        }
+        .code-block-wrapper pre::-webkit-scrollbar-thumb:hover {
+          background: var(--accent);
+          border: 1px solid transparent;
+          background-clip: padding-box;
         }
         .code-block-wrapper pre::before {
           display: none !important;
@@ -361,15 +467,38 @@ export default function InterviewDetailView({ q, stats }) {
           padding: 0 !important;
           font-size: inherit !important;
           line-height: inherit !important;
+          font-family: 'JetBrains Mono', 'Fira Code', monospace !important;
         }
 
+        /* ── Syntax Highlight Tokens ───────────────────────────── */
+        .hljs-keyword, .hljs-selector-tag, .hljs-literal, .hljs-section, .hljs-link { color: #c792ea !important; }
+        .hljs-function .hljs-keyword { color: #82aaff !important; }
+        .hljs-type, .hljs-class .hljs-title, .hljs-title.class_ { color: #ffcb6b !important; }
+        .hljs-title, .hljs-title.function_ { color: #82aaff !important; }
+        .hljs-string, .hljs-meta .hljs-string, .hljs-attribute, .hljs-symbol, .hljs-bullet, .hljs-addition { color: #c3e88d !important; }
+        .hljs-number, .hljs-variable.constant_, .hljs-template-variable { color: #f78c6c !important; }
+        .hljs-comment, .hljs-quote { color: #546e7a !important; font-style: italic !important; }
+        .hljs-deletion, .hljs-meta, .hljs-regexp { color: #ff5370 !important; }
+        .hljs-built_in, .hljs-builtin-name { color: #89ddff !important; }
+        .hljs-tag, .hljs-name { color: #f07178 !important; }
+        .hljs-attr { color: #ffcb6b !important; }
+        .hljs-params, .hljs-operator, .hljs-punctuation { color: #89ddff !important; }
+        .hljs-property { color: #80cbc4 !important; }
+        .hljs-variable { color: #eeffff !important; }
+        .hljs-selector-class { color: #ffcb6b !important; }
+        .hljs-selector-id { color: #82aaff !important; }
+        .hljs-selector-attr { color: #c3e88d !important; }
+        .hljs-subst { color: #eeffff !important; }
+        .hljs-emphasis { font-style: italic !important; }
+        .hljs-strong { font-weight: bold !important; }
+
         .explanation-text code {
-          font-family: 'JetBrains Mono', monospace;
-          background: rgba(124, 58, 237, 0.1);
+          font-family: var(--font-mono);
+          background: var(--bg-elevated);
           color: var(--accent-soft);
-          padding: 2px 6px;
+          padding: 3px 8px;
           border-radius: 6px;
-          font-size: 0.9em;
+          font-size: 0.88em;
         }
 
         .explanation-text .code-comment {
@@ -400,6 +529,65 @@ export default function InterviewDetailView({ q, stats }) {
         .explanation-text .callout-warning strong { color: #f87171 !important; }
         .explanation-text .callout p { margin-bottom: 8px; }
         .explanation-text .callout p:last-child { margin-bottom: 0; }
+
+        /* ── Article Images ───────────────────────────── */
+        .article-image {
+          display: block;
+          margin: 32px auto;
+          border-radius: 12px;
+          overflow: hidden;
+          max-width: 100%;
+        }
+        .article-image.align-left {
+          float: left;
+          margin: 8px 28px 20px 0;
+        }
+        .article-image.align-right {
+          float: right;
+          margin: 8px 0 20px 28px;
+        }
+        .article-image.align-center {
+          margin-left: auto;
+          margin-right: auto;
+        }
+        .article-image.align-full {
+          width: 100% !important;
+          margin-left: 0 !important;
+          margin-right: 0 !important;
+          border-radius: 16px;
+        }
+        .article-image img {
+          width: 100%;
+          height: auto;
+          display: block;
+          border-radius: 10px;
+          object-fit: cover;
+        }
+        .article-image figcaption {
+          font-size: 0.82rem;
+          font-style: italic;
+          color: var(--text-muted);
+          text-align: center;
+          padding: 8px 12px 4px;
+          line-height: 1.5;
+          background: rgba(0,0,0,0.25);
+          border-radius: 0 0 10px 10px;
+        }
+        /* Clear floats after images */
+        .explanation-text p + .article-image,
+        .article-image + p { clear: both; }
+        /* Mobile: all images go full width */
+        @media (max-width: 768px) {
+          .article-image,
+          .article-image.align-left,
+          .article-image.align-right,
+          .article-image.align-center {
+            float: none !important;
+            width: 100% !important;
+            margin: 24px 0 !important;
+            border-radius: 12px !important;
+          }
+        }
 
         .hiring-insight {
           background: rgba(124, 58, 237, 0.03); border-left: 4px solid var(--accent); padding: 24px 32px; border-radius: 0 16px 16px 0; margin: 48px 0; color: var(--text-secondary); font-style: italic; line-height: 1.6;

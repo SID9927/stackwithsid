@@ -1,42 +1,36 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useParams } from 'next/navigation'
 import ArticleForm from '@/components/admin/ArticleForm'
 import { supabase } from '@/lib/supabase'
 
-export default function EditArticlePage({ params }) {
+export default function EditArticlePage() {
+  const params = useParams()
+  const slug = params?.slug
+
   const [article, setArticle] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [slug, setSlug] = useState(null)
+  const [notFound, setNotFound] = useState(false)
 
-  // 1. Unwrap the Promise-based params (Next.js 15+)
-  useEffect(() => {
-    async function resolveParams() {
-      const resolved = await params
-      setSlug(resolved.slug)
-    }
-    resolveParams()
-  }, [params])
-
-  // 2. Fetch data as the authenticated user
   useEffect(() => {
     if (!slug) return
-    
+
     async function loadArticle() {
       const { data, error } = await supabase
         .from('articles')
         .select('*')
         .eq('slug', slug)
         .single()
-        
-      if (error) {
-        console.error('Error fetching article:', error)
+
+      if (error || !data) {
+        setNotFound(true)
       } else {
         setArticle(data)
       }
       setLoading(false)
     }
-    
+
     loadArticle()
   }, [slug])
 
@@ -48,7 +42,7 @@ export default function EditArticlePage({ params }) {
     )
   }
 
-  if (!article) {
+  if (notFound || !article) {
     return (
       <div className="admin-content" style={{ display: 'flex', justifyContent: 'center', padding: '100px', color: '#ef4444' }}>
         <h2>Article not found or access denied.</h2>

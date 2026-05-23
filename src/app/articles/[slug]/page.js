@@ -46,6 +46,7 @@ export default async function ArticlePage({ params }) {
       id={article.id}
       title={article.title}
       tags={article.tags || []}
+      category={article.category}
       publishDate={publishDate}
       readTime={calcReadTime}
     >

@@ -13,6 +13,7 @@ import {
 import FormHeader from '@/components/admin/form/FormHeader'
 import AdminFormStyles from '@/components/admin/form/AdminFormStyles'
 import TechStackManager from '@/components/admin/settings/TechStackManager'
+import CategoryManager from '@/components/admin/settings/CategoryManager'
 import GeneralSettings from '@/components/admin/settings/GeneralSettings'
 
 export default function SettingsPage() {
@@ -68,12 +69,7 @@ export default function SettingsPage() {
             >
               {activeTab === 'stacks' && <TechStackManager />}
               {activeTab === 'general' && <GeneralSettings />}
-              {activeTab === 'categories' && (
-                <div className="glass-card placeholder-card">
-                  <h3><Layers size={20} /> Category Management</h3>
-                  <p>Coming soon: Manage your article categories and navigation labels here.</p>
-                </div>
-              )}
+              {activeTab === 'categories' && <CategoryManager />}
             </motion.div>
           </AnimatePresence>
         </main>

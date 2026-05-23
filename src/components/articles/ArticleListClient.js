@@ -10,23 +10,23 @@ import { formatDate, truncate } from '@/lib/utils'
 
 export default function ArticleListClient({ initialArticles }) {
   const [query, setQuery] = useState('')
-  const [activeTag, setActiveTag] = useState('All')
+  const [activeCategory, setActiveCategory] = useState('All')
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 6
 
-  const allTags = ['All', ...new Set(
-    initialArticles.flatMap(a => (a.tags || []))
+  const allCategories = ['All', ...new Set(
+    initialArticles.map(a => a.category).filter(Boolean)
   )]
 
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [query, activeTag])
+  }, [query, activeCategory])
 
   const filtered = initialArticles.filter(a => {
     const matchesQuery = !query || a.title?.toLowerCase().includes(query.toLowerCase())
-    const matchesTag   = activeTag === 'All' || (a.tags || []).includes(activeTag)
-    return matchesQuery && matchesTag
+    const matchesCategory = activeCategory === 'All' || a.category === activeCategory
+    return matchesQuery && matchesCategory
   })
 
   const totalPages = Math.ceil(filtered.length / itemsPerPage)
@@ -89,21 +89,21 @@ export default function ArticleListClient({ initialArticles }) {
         </div>
       </RevealOnScroll>
 
-      {/* Tag filters */}
-      {allTags.length > 1 && (
+      {/* Category filters */}
+      {allCategories.length > 1 && (
         <RevealOnScroll delay={0.15}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 40 }}>
-            {allTags.map(tag => (
+            {allCategories.map(cat => (
               <motion.button
-                key={tag}
+                key={cat}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => setActiveTag(tag)}
+                onClick={() => setActiveCategory(cat)}
                 style={{
                   padding: '6px 16px',
                   borderRadius: 999,
-                  border: `1px solid ${activeTag === tag ? 'var(--border-accent)' : 'var(--border-subtle)'}`,
-                  background: activeTag === tag ? 'hsl(270,75%,55%,0.15)' : 'var(--bg-card)',
-                  color: activeTag === tag ? 'var(--accent)' : 'var(--text-muted)',
+                  border: `1px solid ${activeCategory === cat ? 'var(--border-accent)' : 'var(--border-subtle)'}`,
+                  background: activeCategory === cat ? 'hsl(270,75%,55%,0.15)' : 'var(--bg-card)',
+                  color: activeCategory === cat ? 'var(--accent)' : 'var(--text-muted)',
                   fontSize: '0.8rem',
                   fontWeight: 500,
                   cursor: 'pointer',
@@ -111,7 +111,7 @@ export default function ArticleListClient({ initialArticles }) {
                   transition: 'all 0.2s ease',
                 }}
               >
-                {tag}
+                {cat}
               </motion.button>
             ))}
           </div>
@@ -140,10 +140,23 @@ export default function ArticleListClient({ initialArticles }) {
                       display: 'flex', 
                       flexDirection: 'column' 
                     }}>
-                      {/* Tags */}
-                      {article.tags?.length > 0 && (
-                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
-                          {article.tags.slice(0, 2).map(t => (
+                      {/* Category and Tags */}
+                      {(article.category || article.tags?.length > 0) && (
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16, alignItems: 'center' }}>
+                          {article.category && (
+                            <span className="badge" style={{
+                              background: 'var(--gradient-purple)',
+                              color: 'white',
+                              fontWeight: '700',
+                              border: 'none',
+                              fontSize: '0.7rem',
+                              padding: '3px 10px',
+                              boxShadow: '0 2px 6px rgba(124, 58, 237, 0.2)'
+                            }}>
+                              {article.category}
+                            </span>
+                          )}
+                          {article.tags?.slice(0, 1).map(t => (
                             <span key={t} className="badge badge-purple" style={{ fontSize: '0.7rem' }}>
                               {t}
                             </span>
