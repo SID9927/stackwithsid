@@ -4,7 +4,8 @@ import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import MobileSheet from '@/components/ui/MobileSheet'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useEditor, EditorContent, Extension, Mark } from '@tiptap/react'
+import { useEditor, EditorContent, Extension, Mark, ReactNodeViewRenderer, NodeViewWrapper, NodeViewContent } from '@tiptap/react'
+import CodeBlock from '@tiptap/extension-code-block'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
 import TextAlign from '@tiptap/extension-text-align'
@@ -17,7 +18,8 @@ import {
   Bold, Italic, Strikethrough, Code, List, ListOrdered,
   Quote, Minus, Undo, Redo, Table as TableIcon,
   AlignLeft, AlignCenter, AlignRight, AlignJustify,
-  ShieldCheck, Zap, Info, Star, Link2, Link2Off, ChevronDown
+  ShieldCheck, Zap, Info, Star, Link2, Link2Off, ChevronDown,
+  Copy, Check
 } from 'lucide-react'
 
 // ── useIsMobile ───────────────────────────────────────────────────────────────
@@ -258,6 +260,84 @@ function LinkDialog({ onInsert, onClose, initialText }) {
   )
 }
 
+const languages = [
+  { value: 'plaintext', label: 'Plain Text' },
+  { value: 'html', label: 'HTML / XML' },
+  { value: 'yaml', label: 'YAML' },
+  { value: 'javascript', label: 'JavaScript' },
+  { value: 'typescript', label: 'TypeScript' },
+  { value: 'css', label: 'CSS' },
+  { value: 'json', label: 'JSON' },
+  { value: 'python', label: 'Python' },
+  { value: 'sql', label: 'SQL' },
+  { value: 'bash', label: 'Bash / Shell' },
+  { value: 'markdown', label: 'Markdown' },
+  { value: 'cpp', label: 'C++' },
+  { value: 'csharp', label: 'C#' },
+  { value: 'java', label: 'Java' },
+  { value: 'go', label: 'Go' },
+  { value: 'rust', label: 'Rust' },
+  { value: 'php', label: 'PHP' },
+  { value: 'ruby', label: 'Ruby' },
+  { value: 'dockerfile', label: 'Dockerfile' },
+]
+
+function CodeBlockComponent({ node, updateAttributes }) {
+  const [copied, setCopied] = useState(false)
+  const language = node.attrs.language || 'plaintext'
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(node.textContent || '')
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <NodeViewWrapper className="code-block-wrapper">
+      <div className="code-block-header" contentEditable={false}>
+        <div className="code-block-header-left">
+          <span className="dot red"></span>
+          <span className="dot yellow"></span>
+          <span className="dot green"></span>
+          <select
+            value={language}
+            onChange={e => updateAttributes({ language: e.target.value })}
+            className="code-block-lang-select"
+          >
+            {languages.map(lang => (
+              <option key={lang.value} value={lang.value}>
+                {lang.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <button type="button" onClick={handleCopy} className="code-block-copy-btn">
+          {copied ? (
+            <>
+              <Check size={14} className="text-green" />
+              <span className="text-green">Copied!</span>
+            </>
+          ) : (
+            <>
+              <Copy size={14} />
+              <span>Copy Code</span>
+            </>
+          )}
+        </button>
+      </div>
+      <pre>
+        <NodeViewContent as="code" className={`language-${language}`} />
+      </pre>
+    </NodeViewWrapper>
+  )
+}
+
+const CustomCodeBlock = CodeBlock.extend({
+  addNodeView() {
+    return ReactNodeViewRenderer(CodeBlockComponent)
+  },
+})
+
 export default function RichTextEditor({ value, onChange, placeholder = 'Start writing...', label = 'Rich Text Editor', compact = false }) {
   const [lineHeight, setLineHeight] = useState('1.6')
   const [showTablePicker, setShowTablePicker] = useState(false)
@@ -277,9 +357,12 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Start w
       StarterKit.configure({
         history: true,
         heading: { levels: [2, 3] },
-        codeBlock: { HTMLAttributes: { class: 'article-code-block', spellcheck: 'false' } },
+        codeBlock: false,
         blockquote: { HTMLAttributes: { class: 'article-blockquote' } },
         link: false,
+      }),
+      CustomCodeBlock.configure({
+        HTMLAttributes: { class: 'article-code-block', spellcheck: 'false' },
       }),
       Placeholder.configure({
         placeholder: placeholder || 'Start writing...',
@@ -937,37 +1020,112 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Start w
           background: rgba(124,58,237,0.04); border-radius: 0 12px 12px 0;
         }
 
-        /* Code Block */
-        .rich-editor-content pre {
-          background: #0d0d12 !important; 
-          color: #e2e8f0 !important;
-          caret-color: #e2e8f0 !important;
+        /* Code Block Wrapper */
+        .code-block-wrapper {
+          position: relative;
+          background: #0d0d12 !important;
           border: 1px solid var(--border-subtle);
-          border-radius: 16px; 
-          padding: 28px 32px; 
-          margin: 32px 0; 
+          border-radius: 16px;
+          margin: 32px 0;
+          overflow: hidden;
+          box-shadow: inset 0 2px 10px rgba(0,0,0,0.5), 0 8px 30px rgba(0,0,0,0.3);
+          transition: border-color 0.2s;
+        }
+        .code-block-wrapper:focus-within {
+          border-color: var(--accent-soft);
+        }
+
+        .code-block-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 10px 16px;
+          background: rgba(255, 255, 255, 0.03);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+          user-select: none;
+        }
+
+        .code-block-header-left {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .code-block-header-left .dot {
+          width: 10px;
+          height: 10px;
+          border-radius: 50%;
+          display: inline-block;
+        }
+        .code-block-header-left .dot.red { background: #ff5f56; }
+        .code-block-header-left .dot.yellow { background: #ffbd2e; }
+        .code-block-header-left .dot.green { background: #27c93f; }
+
+        .code-block-lang-select {
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 6px;
+          color: #a0aec0;
+          font-size: 0.78rem;
+          font-weight: 600;
+          padding: 4px 10px 4px 6px;
+          margin-left: 8px;
+          outline: none;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .code-block-lang-select:hover {
+          background: rgba(255, 255, 255, 0.08);
+          color: #fff;
+          border-color: rgba(255, 255, 255, 0.15);
+        }
+        .code-block-lang-select option {
+          background: #0d0d12;
+          color: #e2e8f0;
+        }
+
+        .code-block-copy-btn {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          background: transparent;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 6px;
+          color: #a0aec0;
+          font-size: 0.75rem;
+          font-weight: 600;
+          padding: 4px 10px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .code-block-copy-btn:hover {
+          background: rgba(255, 255, 255, 0.06);
+          color: #fff;
+          border-color: rgba(255, 255, 255, 0.2);
+        }
+        .code-block-copy-btn .text-green {
+          color: #4ade80 !important;
+        }
+
+        .code-block-wrapper pre {
+          margin: 0 !important;
+          padding: 20px 24px !important;
+          background: transparent !important;
+          border: none !important;
+          box-shadow: none !important;
           overflow-x: auto;
-          box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);
           position: relative;
         }
-        .rich-editor-content pre * {
+        .code-block-wrapper pre::before {
+          display: none !important;
+        }
+        .code-block-wrapper pre code {
+          background: none !important;
           color: #e2e8f0 !important;
+          padding: 0 !important;
+          font-size: 0.92rem !important;
+          line-height: 1.7 !important;
         }
-        .rich-editor-content pre::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          border-radius: 16px;
-          padding: 1px;
-          background: linear-gradient(to bottom right, var(--accent-soft), transparent, var(--accent-soft));
-          -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-          mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-          -webkit-mask-composite: xor;
-          mask-composite: exclude;
-          opacity: 0.3;
-          pointer-events: none;
-        }
-        .rich-editor-content pre code { background: none; color: var(--text-primary); padding: 0; font-size: inherit; line-height: 1.7; opacity: 0.95; }
 
         /* Lists */
         .rich-editor-content ul, .rich-editor-content ol { padding-left: 28px; margin-bottom: 16px; }

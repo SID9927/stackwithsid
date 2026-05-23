@@ -1,8 +1,111 @@
+'use client'
+
+import { useEffect } from 'react'
 import { Sparkles, Info } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import CommentSection from '@/components/articles/CommentSection'
 
 export default function InterviewDetailView({ q, stats }) {
+  useEffect(() => {
+    if (!q || !q.answer) return
+
+    const container = document.querySelector('.explanation-text')
+    if (!container) return
+
+    const pres = container.querySelectorAll('pre')
+    pres.forEach((pre) => {
+      if (pre.parentElement.classList.contains('code-block-wrapper')) return
+
+      const code = pre.querySelector('code')
+      let lang = 'Plain Text'
+      if (code) {
+        const classes = Array.from(code.classList)
+        const langClass = classes.find(c => c.startsWith('language-'))
+        if (langClass) {
+          const l = langClass.replace('language-', '')
+          const langMap = {
+            plaintext: 'Plain Text',
+            html: 'HTML / XML',
+            xml: 'XML',
+            yaml: 'YAML',
+            yml: 'YAML',
+            javascript: 'JavaScript',
+            js: 'JavaScript',
+            typescript: 'TypeScript',
+            ts: 'TypeScript',
+            css: 'CSS',
+            json: 'JSON',
+            python: 'Python',
+            py: 'Python',
+            sql: 'SQL',
+            bash: 'Bash / Shell',
+            sh: 'Bash',
+            markdown: 'Markdown',
+            md: 'Markdown',
+            cpp: 'C++',
+            csharp: 'C#',
+            cs: 'C#',
+            java: 'Java',
+            go: 'Go',
+            rust: 'Rust',
+            rs: 'Rust',
+            php: 'PHP',
+            ruby: 'Ruby',
+            rb: 'Ruby',
+            dockerfile: 'Dockerfile',
+          }
+          lang = langMap[l.toLowerCase()] || l.toUpperCase()
+        }
+      }
+
+      const wrapper = document.createElement('div')
+      wrapper.className = 'code-block-wrapper'
+
+      const header = document.createElement('div')
+      header.className = 'code-block-header'
+
+      const left = document.createElement('div')
+      left.className = 'code-block-header-left'
+      left.innerHTML = `
+        <span class="dot red"></span>
+        <span class="dot yellow"></span>
+        <span class="dot green"></span>
+        <span class="code-block-lang-label">${lang}</span>
+      `
+
+      const copyBtn = document.createElement('button')
+      copyBtn.type = 'button'
+      copyBtn.className = 'code-block-copy-btn'
+      copyBtn.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+        <span>Copy Code</span>
+      `
+
+      copyBtn.addEventListener('click', () => {
+        const textToCopy = code ? code.textContent : pre.textContent
+        navigator.clipboard.writeText(textToCopy || '').then(() => {
+          copyBtn.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check text-green"><polyline points="20 6 9 17 4 12"/></svg>
+            <span class="text-green">Copied!</span>
+          `
+          setTimeout(() => {
+            copyBtn.innerHTML = `
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+              <span>Copy Code</span>
+            `
+          }, 2000)
+        })
+      })
+
+      header.appendChild(left)
+      header.appendChild(copyBtn)
+      wrapper.appendChild(header)
+
+      pre.parentNode.insertBefore(wrapper, pre)
+      wrapper.appendChild(pre)
+    })
+  }, [q])
+
   if (!q) return (
     <div className="empty-detail">
       <div className="empty-icon"><Info size={40} /></div>
@@ -167,34 +270,97 @@ export default function InterviewDetailView({ q, stats }) {
           border-radius: 10px;
         }
 
-        .explanation-text pre {
+        /* Code Block Wrapper */
+        .code-block-wrapper {
+          position: relative;
           background: #0d0d12 !important;
-          color: #e2e8f0 !important;
           border: 1px solid var(--border-subtle);
           border-radius: 16px;
-          padding: 28px 32px;
           margin: 32px 0;
+          overflow: hidden;
+          box-shadow: inset 0 2px 10px rgba(0,0,0,0.5), 0 8px 30px rgba(0,0,0,0.3);
+        }
+
+        .code-block-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 10px 16px;
+          background: rgba(255, 255, 255, 0.03);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+          user-select: none;
+        }
+
+        .code-block-header-left {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .code-block-header-left .dot {
+          width: 10px;
+          height: 10px;
+          border-radius: 50%;
+          display: inline-block;
+        }
+        .code-block-header-left .dot.red { background: #ff5f56; }
+        .code-block-header-left .dot.yellow { background: #ffbd2e; }
+        .code-block-header-left .dot.green { background: #27c93f; }
+
+        .code-block-lang-label {
+          color: #a0aec0;
+          font-size: 0.75rem;
+          font-weight: 700;
+          font-family: var(--font-mono);
+          margin-left: 8px;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+
+        .code-block-copy-btn {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          background: transparent;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 6px;
+          color: #a0aec0;
+          font-size: 0.75rem;
+          font-weight: 600;
+          padding: 4px 10px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .code-block-copy-btn:hover {
+          background: rgba(255, 255, 255, 0.06);
+          color: #fff;
+          border-color: rgba(255, 255, 255, 0.2);
+        }
+        .code-block-copy-btn .text-green {
+          color: #4ade80 !important;
+        }
+
+        .code-block-wrapper pre {
+          margin: 0 !important;
+          padding: 20px 24px !important;
+          background: transparent !important;
+          border: none !important;
+          box-shadow: none !important;
           overflow-x: auto;
-          max-width: 100%;
+          position: relative;
           font-family: 'JetBrains Mono', monospace;
           font-size: 0.95rem;
           line-height: 1.7;
-          box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);
-          position: relative;
         }
-        .explanation-text pre::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          border-radius: 16px;
-          padding: 1px;
-          background: linear-gradient(to bottom right, var(--accent-soft), transparent, var(--accent-soft));
-          -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-          mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-          -webkit-mask-composite: xor;
-          mask-composite: exclude;
-          opacity: 0.4;
-          pointer-events: none;
+        .code-block-wrapper pre::before {
+          display: none !important;
+        }
+        .code-block-wrapper pre code {
+          background: none !important;
+          color: #e2e8f0 !important;
+          padding: 0 !important;
+          font-size: inherit !important;
+          line-height: inherit !important;
         }
 
         .explanation-text code {
@@ -204,14 +370,6 @@ export default function InterviewDetailView({ q, stats }) {
           padding: 2px 6px;
           border-radius: 6px;
           font-size: 0.9em;
-        }
-
-        .explanation-text pre code {
-          background: none;
-          color: inherit;
-          padding: 0;
-          border-radius: 0;
-          font-size: inherit;
         }
 
         .explanation-text .code-comment {
