@@ -10,7 +10,6 @@ import {
   ArrowRight, 
   Terminal, 
   BookOpen, 
-  Check, 
   ChevronRight, 
   Sparkles,
   RefreshCw
@@ -18,149 +17,230 @@ import {
 import { createInitialState, executeGitCommand } from '@/lib/gitEngine'
 import GitVisualizer from './GitVisualizer'
 
-// Defined Levels
+// Revised levels starting from basic repository tracking to advanced remote sync
 const GAME_LEVELS = [
   {
     id: 1,
-    title: '1. Your First Commit',
-    description: 'Every project using Git starts with a commit. A commit captures a snapshot of the repository\'s staged changes at that moment in time.',
-    objective: 'Create a new commit on the `main` branch.',
-    instructions: 'Type `git commit -m "add index page"` and press Enter to record your first changes, or use the quick command button.',
-    hint: 'Running `git commit` will create a new commit node (C1) pointing to (C0), and advance the `main` branch to it.',
-    initialState: createInitialState(),
+    title: '1. Initialize Repository',
+    description: 'Before you can track any project files, you must create a Git repository. This command initializes a hidden .git subdirectory in your folder structure.',
+    objective: 'Initialize a new Git repository.',
+    instructions: 'Type `git init` in the terminal to initialize your empty repository, or click the quick action button.',
+    hint: 'Running `git init` prepares the tracking database and creates a default branch `main`.',
+    initialState: {
+      initialized: false,
+      commits: {},
+      branches: {},
+      head: null,
+      workingDirectory: { 'index.html': 'untracked', 'styles.css': 'untracked' },
+      stagingArea: [],
+      remoteBranches: {}
+    },
     goalCondition: (state) => {
-      return Object.keys(state.commits).length >= 2;
+      return state.initialized === true;
     }
   },
   {
     id: 2,
-    title: '2. Creating & Checking out Branches',
-    description: 'Branches allow you to work on different features or bugfixes in isolation without modifying the main line of development.',
-    objective: 'Create a new branch named `dev` and switch (checkout) to it.',
-    instructions: 'Run `git checkout -b dev` to create and switch to it in a single step. Alternatively, run `git branch dev` followed by `git checkout dev`.',
-    hint: 'Creating a branch adds a new pointer named `dev` pointing to the current commit. Checking out moves HEAD to point to the `dev` branch.',
+    title: '2. Staging Changes (git add)',
+    description: 'Before committing, you must tell Git which files to include in your snapshot. Adding files to the staging area lets you organize your changes.',
+    objective: 'Stage the file `index.html` for your next commit.',
+    instructions: 'Run `git add index.html` (or `git add .` to stage all) and check the status with `git status`.',
+    hint: 'Staging files marks them as ready. If you run `git status`, staged files appear green under "Changes to be committed".',
     initialState: createInitialState({
-      commits: {
-        'C0': { id: 'C0', parents: [], message: 'Initial commit', branch: 'main' },
-        'C1': { id: 'C1', parents: ['C0'], message: 'Add index page', branch: 'main' }
-      },
-      branches: { 'main': 'C1' },
-      head: 'main'
+      initialized: true,
+      commits: {},
+      branches: { 'main': null },
+      head: 'main',
+      workingDirectory: { 'index.html': 'untracked', 'styles.css': 'untracked' },
+      stagingArea: [],
+      remoteBranches: {}
     }),
+    goalCondition: (state) => {
+      return state.stagingArea && state.stagingArea.includes('index.html');
+    }
+  },
+  {
+    id: 3,
+    title: '3. Recording Snapshots (git commit)',
+    description: 'A commit permanently saves your staged changes as a node in the project history. Every commit requires a clear descriptive message.',
+    objective: 'Commit your staged changes to the repository.',
+    instructions: 'Your files are already staged. Commit them by running `git commit -m "Initial commit"`.',
+    hint: 'Running `git commit` creates commit C0. This will clear your staging area and move the `main` branch pointer forward.',
+    initialState: createInitialState({
+      initialized: true,
+      commits: {},
+      branches: { 'main': null },
+      head: 'main',
+      workingDirectory: { 'index.html': 'untracked' },
+      stagingArea: ['index.html'],
+      remoteBranches: {}
+    }),
+    goalCondition: (state) => {
+      return Object.keys(state.commits).length >= 1;
+    }
+  },
+  {
+    id: 4,
+    title: '4. Creating & Switching Branches',
+    description: 'Branches allow you to work on separate features in isolation. Checkout moves your HEAD pointer to target another branch.',
+    objective: 'Create a new branch named `dev` and switch to it.',
+    instructions: 'Type `git checkout -b dev` to create and checkout the branch in one command. (Or use `git branch dev` then `git checkout dev`)',
+    hint: 'Branching creates a pointer pointing to the current commit. checkout moves HEAD to reference that branch pointer.',
+    initialState: createInitialState(),
     goalCondition: (state) => {
       return state.head === 'dev' && state.branches['dev'] !== undefined;
     }
   },
   {
-    id: 3,
-    title: '3. Fast-Forward Merge',
-    description: 'When you want to pull changes from a feature branch back to your main branch, you perform a merge. If the main branch has no new commits since the feature branch split off, Git performs a fast-forward merge.',
+    id: 5,
+    title: '5. Fast-Forward Merge',
+    description: 'Integrating features is called merging. When the branch you are merging has no new commits since you split off, Git simply moves your pointer forward.',
     objective: 'Merge the `feature` branch into the `main` branch.',
-    instructions: 'Ensure you are on the `main` branch (run `git checkout main` if you aren\'t), then merge the feature branch using `git merge feature`.',
-    hint: 'A fast-forward merge simply moves the `main` branch pointer forward to match `feature`. No new merge commit is created.',
+    instructions: 'Switch to main (`git checkout main`) and run `git merge feature` to fast-forward.',
+    hint: 'No merge commit is needed for fast-forward; the pointer moves directly to the feature branch\'s tip.',
     initialState: createInitialState({
+      initialized: true,
       commits: {
         'C0': { id: 'C0', parents: [], message: 'Initial commit', branch: 'main' },
-        'C1': { id: 'C1', parents: ['C0'], message: 'Add nav', branch: 'main' },
-        'C2': { id: 'C2', parents: ['C1'], message: 'Fix login issue', branch: 'feature' }
+        'C1': { id: 'C1', parents: ['C0'], message: 'Add navbar', branch: 'main' },
+        'C2': { id: 'C2', parents: ['C1'], message: 'Fix auth bug', branch: 'feature' }
       },
       branches: { 'main': 'C1', 'feature': 'C2' },
-      head: 'main'
+      head: 'main',
+      workingDirectory: {},
+      stagingArea: [],
+      remoteBranches: {}
     }),
     goalCondition: (state) => {
       return state.branches['main'] === 'C2' && state.head === 'main';
     }
   },
   {
-    id: 4,
-    title: '4. Three-Way Merge (Merge Commit)',
-    description: 'When both branches have diverged (both have new, separate commits since they split), Git cannot do a fast-forward. Instead, it creates a special new commit with two parents—a merge commit.',
+    id: 6,
+    title: '6. Three-Way Merge',
+    description: 'If both branches diverged, Git merges their histories and creates a new merge commit. This commit has two parent links.',
     objective: 'Merge the `dev` branch into the `main` branch.',
-    instructions: 'Ensure you are on `main` (the current HEAD), then merge the `dev` branch by running `git merge dev`.',
-    hint: 'Git will look at the common ancestor (C0), compare the changes on both branches, and create a new merge commit (C3) connecting them.',
+    instructions: 'Ensure you are on `main` (run `git checkout main`), then merge with `git merge dev`.',
+    hint: 'This creates a merge commit (C3) linking both the parent commits together.',
     initialState: createInitialState({
+      initialized: true,
       commits: {
         'C0': { id: 'C0', parents: [], message: 'Initial commit', branch: 'main' },
         'C1': { id: 'C1', parents: ['C0'], message: 'Hotfix on main', branch: 'main' },
-        'C2': { id: 'C2', parents: ['C0'], message: 'New page on dev', branch: 'dev' }
+        'C2': { id: 'C2', parents: ['C0'], message: 'Feat on dev', branch: 'dev' }
       },
       branches: { 'main': 'C1', 'dev': 'C2' },
-      head: 'main'
+      head: 'main',
+      workingDirectory: {},
+      stagingArea: [],
+      remoteBranches: {}
     }),
     goalCondition: (state) => {
-      const currentCommitId = state.branches['main'];
-      const currentCommit = state.commits[currentCommitId];
+      const currentCommit = state.commits[state.branches['main']];
       return currentCommit && currentCommit.parents.includes('C1') && currentCommit.parents.includes('C2');
     }
   },
   {
-    id: 5,
-    title: '5. Git Rebase',
-    description: 'Rebasing is another way of integrating changes. It takes all commits from one branch, copies them, and appends them onto another branch, producing a perfectly linear commit history.',
+    id: 7,
+    title: '7. Git Rebase',
+    description: 'Rebasing moves a sequence of commits to a new base. It creates a linear history by copying and replaying commits.',
     objective: 'Rebase the `feature` branch onto `main`.',
-    instructions: 'Make sure you are on `feature` (`git checkout feature`), and run `git rebase main`.',
-    hint: 'Rebasing takes the commits on `feature` since it diverged, saves them temporarily, moves the `feature` branch to the tip of `main`, and then replays those saved commits on top.',
+    instructions: 'Checkout `feature` (`git checkout feature`) and run `git rebase main`.',
+    hint: 'Rebasing makes your branch look as if it was split directly off the latest commit on `main`.',
     initialState: createInitialState({
+      initialized: true,
       commits: {
         'C0': { id: 'C0', parents: [], message: 'Initial commit', branch: 'main' },
-        'C1': { id: 'C1', parents: ['C0'], message: 'Update homepage on main', branch: 'main' },
-        'C2': { id: 'C2', parents: ['C0'], message: 'Draft styling on feature', branch: 'feature' }
+        'C1': { id: 'C1', parents: ['C0'], message: 'Update core on main', branch: 'main' },
+        'C2': { id: 'C2', parents: ['C0'], message: 'Draft UI on feature', branch: 'feature' }
       },
       branches: { 'main': 'C1', 'feature': 'C2' },
-      head: 'feature'
+      head: 'feature',
+      workingDirectory: {},
+      stagingArea: [],
+      remoteBranches: {}
     }),
     goalCondition: (state) => {
-      const featureCommitId = state.branches['feature'];
-      const featureCommit = state.commits[featureCommitId];
+      const featureCommit = state.commits[state.branches['feature']];
       return featureCommit && featureCommit.parents.includes('C1') && state.head === 'feature';
     }
   },
   {
-    id: 6,
-    title: '6. Cherry Pick',
-    description: 'Sometimes you don\'t want to merge or rebase an entire branch. If you only want a single commit\'s changes, you can cherry-pick it.',
+    id: 8,
+    title: '8. Cherry Picking',
+    description: 'Cherry-picking copies a specific commit from another branch and applies it directly on top of your current active branch.',
     objective: 'Cherry-pick commit `C2` from the `dev` branch onto the `main` branch.',
-    instructions: 'You are on the `main` branch. Cherry-pick the changes of commit C2 by running `git cherry-pick C2`.',
-    hint: 'Cherry-picking creates a new duplicate commit on your current branch containing the exact changes introduced in C2.',
+    instructions: 'Ensure you are on `main` and type `git cherry-pick C2` to copy the bugfix.',
+    hint: 'This creates a copy commit on `main` containing the exact bugfix changes from C2.',
     initialState: createInitialState({
+      initialized: true,
       commits: {
         'C0': { id: 'C0', parents: [], message: 'Initial commit', branch: 'main' },
-        'C1': { id: 'C1', parents: ['C0'], message: 'C1 work', branch: 'dev' },
+        'C1': { id: 'C1', parents: ['C0'], message: 'C1 features', branch: 'dev' },
         'C2': { id: 'C2', parents: ['C1'], message: 'C2 (Crucial Bugfix)', branch: 'dev' }
       },
       branches: { 'main': 'C0', 'dev': 'C2' },
-      head: 'main'
+      head: 'main',
+      workingDirectory: {},
+      stagingArea: [],
+      remoteBranches: {}
     }),
     goalCondition: (state) => {
-      const mainCommitId = state.branches['main'];
-      const mainCommit = state.commits[mainCommitId];
+      const mainCommit = state.commits[state.branches['main']];
       return mainCommit && mainCommit.message.includes('Bugfix') && mainCommit.parents.includes('C0');
     }
   },
   {
-    id: 7,
-    title: '7. Git Reset & Revert',
-    description: 'When you make a mistake, Git offers tools to go back. `git reset` moves the branch pointer backward, discarding commits. `git revert` creates a new commit that reverses the changes of an old commit.',
-    objective: 'Reset your branch back by 1 commit (to C1).',
-    instructions: 'You are on the `main` branch. Undo your last commit by running `git reset --hard HEAD~1`.',
-    hint: 'Resetting moves the active branch pointer back to a parent commit. HEAD~1 points to the parent of the current HEAD.',
+    id: 9,
+    title: '9. Resetting Commits',
+    description: 'If you want to discard changes, `git reset --hard` moves your branch pointer backward, effectively erasing commits.',
+    objective: 'Discard commit C2 and reset your branch to C1.',
+    instructions: 'You are on the `main` branch. Discard the last commit by running `git reset --hard HEAD~1`.',
+    hint: 'HEAD~1 references the direct parent commit of the active branch pointer.',
     initialState: createInitialState({
+      initialized: true,
       commits: {
         'C0': { id: 'C0', parents: [], message: 'Initial commit', branch: 'main' },
-        'C1': { id: 'C1', parents: ['C0'], message: 'First commit', branch: 'main' },
-        'C2': { id: 'C2', parents: ['C1'], message: 'Mistaken commit', branch: 'main' }
+        'C1': { id: 'C1', parents: ['C0'], message: 'Good work', branch: 'main' },
+        'C2': { id: 'C2', parents: ['C1'], message: 'Broken work', branch: 'main' }
       },
       branches: { 'main': 'C2' },
-      head: 'main'
+      head: 'main',
+      workingDirectory: {},
+      stagingArea: [],
+      remoteBranches: {}
     }),
     goalCondition: (state) => {
       return state.branches['main'] === 'C1';
+    }
+  },
+  {
+    id: 10,
+    title: '10. Pushing to GitHub (git push)',
+    description: 'To share your work, you push local branch commits to a remote server. This updates the remote branches (represented as origin/branch).',
+    objective: 'Push your local main branch commits to the remote origin.',
+    instructions: 'Verify your status with `git status` then run `git push` to upload C1 to origin/main.',
+    hint: 'Pushing syncs origin/main with your local main pointer, updating the remote tracking branch.',
+    initialState: createInitialState({
+      initialized: true,
+      commits: {
+        'C0': { id: 'C0', parents: [], message: 'Initial commit', branch: 'main' },
+        'C1': { id: 'C1', parents: ['C0'], message: 'Cool feature', branch: 'main' }
+      },
+      branches: { 'main': 'C1' },
+      head: 'main',
+      workingDirectory: {},
+      stagingArea: [],
+      remoteBranches: { 'main': 'C0' }
+    }),
+    goalCondition: (state) => {
+      return state.remoteBranches && state.remoteBranches['main'] === 'C1';
     }
   }
 ];
 
 export default function GitGame() {
-  const [levelIndex, setLevelIndex] = useState(0) // 0 to GAME_LEVELS.length - 1
+  const [levelIndex, setLevelIndex] = useState(0)
   const [isSandbox, setIsSandbox] = useState(false)
   const [gitState, setGitState] = useState(GAME_LEVELS[0].initialState)
   const [terminalLogs, setTerminalLogs] = useState([
@@ -174,7 +254,7 @@ export default function GitGame() {
   const [showHint, setShowHint] = useState(false)
   const [isCompleted, setIsCompleted] = useState(false)
 
-  const terminalEndRef = useRef(null)
+  const logsContainerRef = useRef(null)
   const inputRef = useRef(null)
 
   const activeLevel = GAME_LEVELS[levelIndex]
@@ -201,10 +281,10 @@ export default function GitGame() {
     setInputVal('')
   }, [levelIndex, isSandbox])
 
-  // Scroll terminal logs to bottom
+  // Scroll terminal logs container internally to bottom on changes (fixes outer page scrolling)
   useEffect(() => {
-    if (terminalEndRef.current) {
-      terminalEndRef.current.scrollIntoView({ behavior: 'smooth' })
+    if (logsContainerRef.current) {
+      logsContainerRef.current.scrollTop = logsContainerRef.current.scrollHeight
     }
   }, [terminalLogs])
 
@@ -286,17 +366,27 @@ export default function GitGame() {
   }
 
   // List of quick commands helper tags
-  const quickActions = isSandbox
-    ? ['git commit -m "work"', 'git branch feature', 'git checkout feature', 'git merge main', 'git rebase main']
-    : [
-        activeLevel.id === 1 ? 'git commit -m "add index page"' : null,
-        activeLevel.id === 2 ? 'git checkout -b dev' : null,
-        activeLevel.id === 3 ? 'git merge feature' : null,
-        activeLevel.id === 4 ? 'git merge dev' : null,
-        activeLevel.id === 5 ? 'git rebase main' : null,
-        activeLevel.id === 6 ? 'git cherry-pick C2' : null,
-        activeLevel.id === 7 ? 'git reset --hard HEAD~1' : null,
-      ].filter(Boolean)
+  const getQuickActions = () => {
+    if (isSandbox) {
+      return ['git status', 'git add .', 'git commit -m "work"', 'git branch feature', 'git checkout feature', 'git merge main', 'git rebase main', 'git log']
+    }
+    
+    switch (activeLevel.id) {
+      case 1: return ['git init', 'git status']
+      case 2: return ['git status', 'git add index.html', 'git add .']
+      case 3: return ['git status', 'git commit -m "Initial commit"']
+      case 4: return ['git branch dev', 'git checkout dev', 'git checkout -b dev']
+      case 5: return ['git checkout main', 'git merge feature', 'git log']
+      case 6: return ['git merge dev', 'git log']
+      case 7: return ['git rebase main', 'git log']
+      case 8: return ['git cherry-pick C2', 'git log']
+      case 9: return ['git reset --hard HEAD~1', 'git log']
+      case 10: return ['git status', 'git push']
+      default: return []
+    }
+  }
+
+  const quickActions = getQuickActions();
 
   return (
     <div 
@@ -451,13 +541,15 @@ export default function GitGame() {
         <div style={{ marginTop: 'auto', borderTop: '1px solid var(--border-subtle)', paddingTop: 16 }}>
           <h4 style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8, letterSpacing: '0.04em' }}>GIT CHEATSHEET</h4>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
+            <div><span style={{ color: 'var(--accent)' }}>git init</span> - Create new local repo</div>
+            <div><span style={{ color: 'var(--accent)' }}>git status</span> - Check modified/staged files</div>
+            <div><span style={{ color: 'var(--accent)' }}>git add &lt;file&gt;</span> - Stage file changes</div>
             <div><span style={{ color: 'var(--accent)' }}>git commit -m "msg"</span> - Record snapshot</div>
+            <div><span style={{ color: 'var(--accent)' }}>git log</span> - View commit history logs</div>
             <div><span style={{ color: 'var(--accent)' }}>git branch &lt;name&gt;</span> - Create pointer</div>
             <div><span style={{ color: 'var(--accent)' }}>git checkout &lt;name&gt;</span> - Switch branch/commit</div>
             <div><span style={{ color: 'var(--accent)' }}>git merge &lt;branch&gt;</span> - Integrate branch</div>
-            <div><span style={{ color: 'var(--accent)' }}>git rebase &lt;branch&gt;</span> - Copy commits to base</div>
-            <div><span style={{ color: 'var(--accent)' }}>git cherry-pick &lt;C#&gt;</span> - Apply specific commit</div>
-            <div><span style={{ color: 'var(--accent)' }}>git reset HEAD~1</span> - Step back in commit tree</div>
+            <div><span style={{ color: 'var(--accent)' }}>git push</span> - Upload commits to GitHub</div>
           </div>
         </div>
       </div>
@@ -668,6 +760,7 @@ export default function GitGame() {
 
           {/* Terminal Log Output List */}
           <div 
+            ref={logsContainerRef}
             style={{
               flex: 1,
               overflowY: 'auto',
@@ -680,24 +773,30 @@ export default function GitGame() {
             }}
             onClick={() => inputRef.current?.focus()}
           >
-            {terminalLogs.map((log, index) => (
-              <div 
-                key={index} 
-                style={{ 
-                  whiteSpace: 'pre-wrap', 
-                  color: log.startsWith('\n$') 
-                    ? 'var(--accent-soft)' 
-                    : log.includes('error') || log.includes('fatal')
-                      ? '#ef4444'
-                      : log.includes('Success!') || log.includes('switched to') || log.includes('Rebased') || log.includes('Completed')
-                        ? '#10b981'
-                        : '#e4e4e7'
-                }}
-              >
-                {log}
-              </div>
-            ))}
-            <div ref={terminalEndRef} />
+            {terminalLogs.map((log, index) => {
+              let displayLog = log;
+              let color = '#e4e4e7';
+              
+              if (log.startsWith('\n$')) {
+                color = 'var(--accent-soft)';
+              } else if (log.startsWith('\tred:')) {
+                displayLog = log.substring(5);
+                color = '#ef4444'; // red text
+              } else if (log.startsWith('\tgreen:')) {
+                displayLog = log.substring(7);
+                color = '#10b981'; // green text
+              } else if (log.includes('error') || log.includes('fatal')) {
+                color = '#ef4444';
+              } else if (log.includes('Success!') || log.includes('Switched to') || log.includes('Rebased') || log.includes('Completed')) {
+                color = '#10b981';
+              }
+
+              return (
+                <div key={index} style={{ whiteSpace: 'pre-wrap', color }}>
+                  {displayLog}
+                </div>
+              );
+            })}
           </div>
 
           {/* Interactive Shell Input Prompt */}

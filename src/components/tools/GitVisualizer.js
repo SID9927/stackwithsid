@@ -7,6 +7,40 @@ export default function GitVisualizer({ gitState }) {
   const containerRef = useRef(null)
   const [tooltip, setTooltip] = useState(null)
   
+  // Render empty state if repository is not initialized
+  if (!gitState.initialized) {
+    return (
+      <div style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'var(--bg-secondary)',
+        color: 'var(--text-muted)',
+        fontFamily: 'var(--font-syne)',
+        padding: 24,
+        textAlign: 'center',
+        minHeight: '300px',
+        width: '100%'
+      }}>
+        <div style={{
+          width: 60, height: 60, borderRadius: 16,
+          background: 'rgba(124, 58, 237, 0.05)',
+          border: '1px dashed var(--border-mid)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          marginBottom: 16, fontSize: '1.5rem'
+        }}>
+          📁
+        </div>
+        <h3 style={{ color: 'var(--text-primary)', fontSize: '1.1rem' }}>Local Directory Not Initialized</h3>
+        <p style={{ fontSize: '0.85rem', maxWidth: 320, marginTop: 6, lineHeight: 1.5 }}>
+          Before tracking changes, you must initialize Git. Type <code style={{ color: 'var(--accent-soft)', background: 'var(--bg-card)', padding: '3px 8px', borderRadius: 6, fontFamily: 'var(--font-mono)' }}>git init</code> below to start!
+        </p>
+      </div>
+    )
+  }
+
   // 1. Assign branch tracks
   const branchTracks = {}
   let trackCounter = 0
@@ -15,7 +49,7 @@ export default function GitVisualizer({ gitState }) {
   branchTracks['main'] = 0
   
   // Sort branches to keep tracking stable
-  const sortedBranches = Object.keys(gitState.branches).sort((a, b) => {
+  const sortedBranches = Object.keys(gitState.branches || {}).sort((a, b) => {
     if (a === 'main') return -1;
     if (b === 'main') return 1;
     return a.localeCompare(b);
@@ -41,16 +75,18 @@ export default function GitVisualizer({ gitState }) {
     return 0;
   };
 
+  const commits = gitState.commits || {};
+  const branches = gitState.branches || {};
+
   // 2. Parse commits in sequential/chronological order to assign columns (horizontal positions)
-  // Commits keys are in format "C0", "C1", "C2", etc.
-  const commitList = Object.keys(gitState.commits)
+  const commitList = Object.keys(commits)
     .sort((a, b) => {
       const aNum = parseInt(a.substring(1));
       const bNum = parseInt(b.substring(1));
       return aNum - bNum;
     })
     .map((id, index) => {
-      const commit = gitState.commits[id];
+      const commit = commits[id];
       const track = getCommitTrack(commit);
       return {
         ...commit,
@@ -68,7 +104,7 @@ export default function GitVisualizer({ gitState }) {
   });
 
   // Calculate active commit ID
-  const activeCommitId = gitState.branches[gitState.head] || gitState.head;
+  const activeCommitId = branches[gitState.head] || gitState.head;
 
   // Track size of visualizer to fit SVG viewbox
   const maxCol = commitList.length > 0 ? commitList[commitList.length - 1].col : 0;
@@ -78,8 +114,9 @@ export default function GitVisualizer({ gitState }) {
 
   // Group branch labels by the commit they point to
   const labelsByCommit = {};
-  Object.keys(gitState.branches).forEach(branchName => {
-    const commitId = gitState.branches[branchName];
+  Object.keys(branches).forEach(branchName => {
+    const commitId = branches[branchName];
+    if (!commitId) return; // Skip branches not created yet
     if (!labelsByCommit[commitId]) {
       labelsByCommit[commitId] = [];
     }
@@ -90,8 +127,28 @@ export default function GitVisualizer({ gitState }) {
     });
   });
 
-  // If HEAD is detached, add detached label directly to the target commit
-  if (!gitState.branches[gitState.head]) {
+  // Add remote origin branches labels if they exist
+  if (gitState.remoteBranches) {
+    Object.keys(gitState.remoteBranches).forEach(branchName => {
+      const commitId = gitState.remoteBranches[branchName];
+      if (!commitId || !commits[commitId]) return;
+      if (!labelsByCommit[commitId]) {
+        labelsByCommit[commitId] = [];
+      }
+      // Check if duplicate label
+      const existing = labelsByCommit[commitId].find(l => l.name === `origin/${branchName}`);
+      if (!existing) {
+        labelsByCommit[commitId].push({
+          type: 'remote-branch',
+          name: `origin/${branchName}`,
+          isActive: false
+        });
+      }
+    });
+  }
+
+  // If HEAD is detached and resolved, add detached label directly to the target commit
+  if (gitState.head && !branches[gitState.head] && commits[gitState.head]) {
     const detachedCommitId = gitState.head;
     if (!labelsByCommit[detachedCommitId]) {
       labelsByCommit[detachedCommitId] = [];
@@ -108,7 +165,7 @@ export default function GitVisualizer({ gitState }) {
     if (containerRef.current) {
       containerRef.current.scrollLeft = containerRef.current.scrollWidth;
     }
-  }, [gitState.commits]);
+  }, [commits]);
 
   // Color palette for branches
   const getBranchColor = (track) => {
@@ -316,6 +373,7 @@ export default function GitVisualizer({ gitState }) {
                   const labelYOffset = commit.y + 28 + labelIndex * 28;
                   const labelColor = label.isActive ? 'var(--accent)' : 'var(--border-mid)';
                   const isHead = label.type === 'head-detached' || (label.isActive && gitState.head === label.name);
+                  const isRemote = label.type === 'remote-branch';
 
                   return (
                     <g key={`label-${commit.id}-${label.name}`} style={{ transition: 'all 0.3s' }}>
@@ -339,8 +397,8 @@ export default function GitVisualizer({ gitState }) {
                         width={90}
                         height={20}
                         rx={6}
-                        fill={isHead ? 'var(--accent)' : 'var(--bg-elevated)'}
-                        stroke={label.isActive ? 'var(--text-primary)' : 'var(--border-subtle)'}
+                        fill={isHead ? 'var(--accent)' : isRemote ? 'rgba(245, 158, 11, 0.15)' : 'var(--bg-elevated)'}
+                        stroke={isHead ? 'var(--text-primary)' : isRemote ? '#f59e0b' : 'var(--border-subtle)'}
                         strokeWidth={1}
                         style={{ filter: isHead ? 'drop-shadow(0 2px 8px rgba(124, 58, 237, 0.4))' : 'none' }}
                       />
@@ -350,7 +408,7 @@ export default function GitVisualizer({ gitState }) {
                         x={commit.x}
                         y={labelYOffset + 14}
                         textAnchor="middle"
-                        fill={isHead ? '#ffffff' : 'var(--text-secondary)'}
+                        fill={isHead ? '#ffffff' : isRemote ? '#f59e0b' : 'var(--text-secondary)'}
                         style={{
                           fontFamily: 'var(--font-mono)',
                           fontSize: '0.65rem',

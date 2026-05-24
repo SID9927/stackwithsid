@@ -1,6 +1,6 @@
 /**
  * Git State Machine & Command Parser Engine
- * Represents a simplified client-side Git repository.
+ * Represents a simplified client-side Git repository with staging area, files, and remote tracking.
  */
 
 export const createInitialState = (customInit = null) => {
@@ -8,13 +8,22 @@ export const createInitialState = (customInit = null) => {
     return JSON.parse(JSON.stringify(customInit));
   }
   return {
+    initialized: true,
     commits: {
       'C0': { id: 'C0', parents: [], message: 'Initial commit', branch: 'main' }
     },
     branches: {
       'main': 'C0'
     },
-    head: 'main' // Points to branch name 'main', or direct commit ID (detached HEAD)
+    head: 'main', // Points to branch name 'main', or direct commit ID (detached HEAD)
+    workingDirectory: {
+      'index.html': 'modified',
+      'styles.css': 'untracked'
+    },
+    stagingArea: [],
+    remoteBranches: {
+      'main': 'C0'
+    }
   };
 };
 
@@ -101,6 +110,29 @@ export const executeGitCommand = (state, cmdString) => {
     return { state, log };
   }
 
+  // Handle git init first (special case for uninitialized state)
+  if (sub === 'init') {
+    nextState.initialized = true;
+    if (!nextState.commits || Object.keys(nextState.commits).length === 0) {
+      nextState.commits = {
+        'C0': { id: 'C0', parents: [], message: 'Initial commit', branch: 'main' }
+      };
+      nextState.branches = { 'main': 'C0' };
+      nextState.head = 'main';
+    }
+    nextState.workingDirectory = nextState.workingDirectory || { 'index.html': 'modified', 'styles.css': 'untracked' };
+    nextState.stagingArea = nextState.stagingArea || [];
+    nextState.remoteBranches = nextState.remoteBranches || { 'main': 'C0' };
+    log.push('Initialized empty Git repository in /workspace/.git/');
+    return { state: nextState, log };
+  }
+
+  // Guard all other commands if not initialized
+  if (!nextState.initialized) {
+    log.push('fatal: not a git repository (or any of the parent directories): .git');
+    return { state, log };
+  }
+
   // Get active commit ID
   const getActiveCommitId = (s) => {
     if (s.branches[s.head]) {
@@ -126,12 +158,116 @@ export const executeGitCommand = (state, cmdString) => {
   const activeCommitId = getActiveCommitId(nextState);
 
   switch (sub) {
+    case 'status': {
+      const staged = nextState.stagingArea || [];
+      const unstaged = [];
+      const untracked = [];
+
+      Object.keys(nextState.workingDirectory || {}).forEach(file => {
+        const status = nextState.workingDirectory[file];
+        if (status === 'modified' && !staged.includes(file)) {
+          unstaged.push(file);
+        } else if (status === 'untracked' && !staged.includes(file)) {
+          untracked.push(file);
+        }
+      });
+
+      const branchName = nextState.branches[nextState.head] ? nextState.head : null;
+      log.push(`On branch ${branchName || 'detached HEAD'}`);
+
+      // Remote tracking info
+      if (branchName && nextState.remoteBranches && nextState.remoteBranches[branchName]) {
+        const localCommit = nextState.branches[branchName];
+        const remoteCommit = nextState.remoteBranches[branchName];
+        if (localCommit === remoteCommit) {
+          log.push(`Your branch is up to date with 'origin/${branchName}'.`);
+        } else {
+          const localAncestors = getAncestors(localCommit, nextState.commits);
+          if (localAncestors.has(remoteCommit)) {
+            const count = getCommitsSince(localCommit, remoteCommit, nextState.commits).length;
+            log.push(`Your branch is ahead of 'origin/${branchName}' by ${count} commit(s).\n  (use "git push" to publish your local commits)`);
+          }
+        }
+      }
+
+      log.push('');
+
+      if (staged.length > 0) {
+        log.push('Changes to be committed:');
+        log.push('  (use "git restore --staged <file>..." to unstage)');
+        staged.forEach(f => {
+          log.push(`\tgreen:new file:   ${f}`);
+        });
+        log.push('');
+      }
+
+      if (unstaged.length > 0) {
+        log.push('Changes not staged for commit:');
+        log.push('  (use "git add <file>..." to update what will be committed)');
+        unstaged.forEach(f => {
+          log.push(`\tred:modified:   ${f}`);
+        });
+        log.push('');
+      }
+
+      if (untracked.length > 0) {
+        log.push('Untracked files:');
+        log.push('  (use "git add <file>..." to include in what will be committed)');
+        untracked.forEach(f => {
+          log.push(`\tred:   ${f}`);
+        });
+        log.push('');
+      }
+
+      if (staged.length === 0 && unstaged.length === 0 && untracked.length === 0) {
+        log.push('nothing to commit, working tree clean');
+      }
+      break;
+    }
+
+    case 'add': {
+      const target = parts[2];
+      if (!target) {
+        log.push('Nothing specified, nothing added.');
+        break;
+      }
+
+      nextState.workingDirectory = nextState.workingDirectory || {};
+      nextState.stagingArea = nextState.stagingArea || [];
+
+      if (target === '.' || target === '*') {
+        // Add all modified/untracked files
+        Object.keys(nextState.workingDirectory).forEach(file => {
+          if (!nextState.stagingArea.includes(file)) {
+            nextState.stagingArea.push(file);
+          }
+        });
+        log.push('Staged all files.');
+      } else {
+        if (nextState.workingDirectory[target]) {
+          if (!nextState.stagingArea.includes(target)) {
+            nextState.stagingArea.push(target);
+          }
+          log.push(`Staged ${target}`);
+        } else {
+          log.push(`fatal: pathspec '${target}' did not match any files`);
+        }
+      }
+      break;
+    }
+
     case 'commit': {
+      // Check staging area
+      const staged = nextState.stagingArea || [];
+      if (staged.length === 0) {
+        log.push('no changes added to commit (use "git add" and/or "git commit -a")');
+        break;
+      }
+
       // Find message option
       let message = 'New commit';
       const mIdx = parts.indexOf('-m');
       if (mIdx !== -1 && parts[mIdx + 1]) {
-        // Rejoin message parts in case of spaces if they are not quotes
         const rawMessage = parts.slice(mIdx + 1).join(' ');
         message = rawMessage.replace(/['"]/g, ''); // strip quotes
       }
@@ -152,7 +288,39 @@ export const executeGitCommand = (state, cmdString) => {
         nextState.head = newId; // Detached HEAD moves directly
       }
 
+      // Clear staged files and update working directory status to 'committed'
+      nextState.stagingArea = [];
+      staged.forEach(f => {
+        delete nextState.workingDirectory[f]; // File matches commit now
+      });
+
+      // Add a new file in working directory for further loops
+      nextState.workingDirectory[`feature-${newId.toLowerCase()}.js`] = 'untracked';
+
       log.push(`[${activeBranchName || 'detached HEAD'} ${newId}] ${message}`);
+      break;
+    }
+
+    case 'log': {
+      let current = activeCommitId;
+      if (!current) {
+        log.push('fatal: your current branch does not have any commits yet');
+        break;
+      }
+
+      log.push('--- Commit History Log ---');
+      while (current) {
+        const commit = nextState.commits[current];
+        if (!commit) break;
+
+        const isHeadStr = nextState.head === current || (nextState.branches[nextState.head] === current) ? ' (HEAD -> ' + nextState.head + ')' : '';
+        log.push(`commit ${commit.id}${isHeadStr}`);
+        log.push(`Author: Dev <hello@dsiddharth.in>`);
+        log.push(`Date:   ${new Date().toDateString()}`);
+        log.push(`\n    ${commit.message}\n`);
+        
+        current = commit.parents && commit.parents[0];
+      }
       break;
     }
 
@@ -457,6 +625,48 @@ export const executeGitCommand = (state, cmdString) => {
       }
 
       log.push(`[${currentBranchName || 'detached HEAD'} ${newId}] Revert "${origCommit.message}"`);
+      break;
+    }
+
+    case 'push': {
+      const currentBranchName = nextState.branches[nextState.head] ? nextState.head : null;
+      if (!currentBranchName) {
+        log.push('fatal: You are in detached HEAD state. Cannot push.');
+        break;
+      }
+
+      const localCommit = nextState.branches[currentBranchName];
+      nextState.remoteBranches = nextState.remoteBranches || {};
+      nextState.remoteBranches[currentBranchName] = localCommit;
+
+      log.push('Enumerating objects: 3, done.');
+      log.push('Counting objects: 100% (3/3), done.');
+      log.push('Delta compression using up to 8 threads');
+      log.push('Compressing objects: 100% (2/2), done.');
+      log.push('Writing objects: 100% (3/3), 296 bytes | 296.00 KiB/s, done.');
+      log.push('Total 3 (delta 1), reused 0 (delta 0), pack-reused 0');
+      log.push(`To https://github.com/SID9927/stackwithsid.git`);
+      log.push(`   ${activeCommitId.substring(0, 4)}..${localCommit}  ${currentBranchName} -> ${currentBranchName}`);
+      break;
+    }
+
+    case 'pull': {
+      const currentBranchName = nextState.branches[nextState.head] ? nextState.head : null;
+      if (!currentBranchName) {
+        log.push('fatal: You are in detached HEAD state. Cannot pull.');
+        break;
+      }
+
+      nextState.remoteBranches = nextState.remoteBranches || {};
+      const remoteCommit = nextState.remoteBranches[currentBranchName];
+      if (!remoteCommit || remoteCommit === activeCommitId) {
+        log.push('Already up to date.');
+        break;
+      }
+
+      // Fast-forward merge of remote commit
+      nextState.branches[currentBranchName] = remoteCommit;
+      log.push(`Updating ${activeCommitId}..${remoteCommit}\nFast-forward`);
       break;
     }
 
