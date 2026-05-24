@@ -16,7 +16,7 @@ export const metadata = {
     type: 'website',
     images: [
       {
-        url: 'https://stackwithsid.com/images/git-game-preview.png',
+        url: 'https://stackwithsid.com/images/git-game-preview_optimized.webp',
         width: 1200,
         height: 630,
         alt: 'Git Master Quest Interactive Visualizer Preview'
@@ -27,7 +27,7 @@ export const metadata = {
     card: 'summary_large_image',
     title: 'Interactive Git Learning Game & Visualizer | StackWithSid',
     description: 'Learn Git branching, merging, rebasing, and recovery commands visually through interactive gameplay puzzles.',
-    images: ['https://stackwithsid.com/images/git-game-preview.png']
+    images: ['https://stackwithsid.com/images/git-game-preview_optimized.webp']
   }
 }
 

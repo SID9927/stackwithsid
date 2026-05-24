@@ -16,7 +16,7 @@ export const metadata = {
     type: 'website',
     images: [
       {
-        url: 'https://stackwithsid.com/images/image-compressor-preview.png',
+        url: 'https://stackwithsid.com/images/image-compressor-preview_optimized.webp',
         width: 1200,
         height: 630,
         alt: 'Universal Image Compressor Tool Preview'
@@ -27,7 +27,7 @@ export const metadata = {
     card: 'summary_large_image',
     title: 'Universal Image Compressor & Converter | StackWithSid',
     description: 'Compress, convert, and optimize images client-side for faster web pages and high-performance applications. Safe, 100% private, and fast.',
-    images: ['https://stackwithsid.com/images/image-compressor-preview.png']
+    images: ['https://stackwithsid.com/images/image-compressor-preview_optimized.webp']
   }
 }
 
