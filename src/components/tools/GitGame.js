@@ -329,7 +329,7 @@ export default function GitGame() {
       </div>
 
       {/* ── Sidebar ───────────────────────────────────────────────────── */}
-      <div className="git-game-sidebar" style={{
+      <aside className="git-game-sidebar" style={{
         background: 'var(--bg-card)',
         borderRight: '1px solid var(--border-subtle)',
         display: 'flex',
@@ -347,9 +347,9 @@ export default function GitGame() {
         }}>
           {/* Row 1: Title */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <h2 style={{ fontSize: '1.1rem', fontFamily: 'var(--font-syne)', fontWeight: 800, margin: 0, letterSpacing: '-0.01em' }}>
+            <h1 style={{ fontSize: '1.1rem', fontFamily: 'var(--font-syne)', fontWeight: 800, margin: 0, letterSpacing: '-0.01em' }}>
               Git Master Quest
-            </h2>
+            </h1>
           </div>
 
           {/* Row 2: Stats & Controls */}
@@ -673,10 +673,10 @@ export default function GitGame() {
             onRunCommand={handleCommandSubmit}
           />
         </div>
-      </div>
+      </aside>
 
       {/* ── Main Area ─────────────────────────────────────────────────── */}
-      <div className="git-game-main" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+      <section className="git-game-main" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
 
         {/* Level Complete Banner — slides in above visualizer, NOT as overlay */}
         <LevelBanner
@@ -778,18 +778,18 @@ export default function GitGame() {
             style={{
               flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 16px',
               fontFamily: 'var(--font-mono)', fontSize: '0.78rem',
-              lineHeight: 1.55, color: '#d4d4d8', cursor: 'text'
+              lineHeight: 1.55, color: 'var(--text-primary)', cursor: 'text'
             }}
             onClick={() => inputRef.current?.focus({ preventScroll: true })}
           >
             {terminalLogs.map((line, i) => {
               let displayLog = line
-              let color = '#e4e4e7'
+              let color = 'var(--text-secondary)'
 
-              if (line.startsWith('\n$'))        { color = 'var(--accent-soft)' }
-              else if (line.startsWith('\tred:'))   { displayLog = line.substring(5); color = '#f87171' }
-              else if (line.startsWith('\tgreen:')) { displayLog = line.substring(7); color = '#34d399' }
-              else if (line.includes('fatal:') || line.includes('error:')) { color = '#f87171' }
+              if (line.startsWith('\n$'))        { color = 'var(--accent)' }
+              else if (line.startsWith('\tred:'))   { displayLog = line.substring(5); color = '#ef4444' }
+              else if (line.startsWith('\tgreen:')) { displayLog = line.substring(7); color = '#10b981' }
+              else if (line.includes('fatal:') || line.includes('error:')) { color = '#ef4444' }
               else if (line.includes('──'))       { color = 'var(--text-muted)' }
 
               return (
@@ -826,7 +826,7 @@ export default function GitGame() {
             />
           </div>
         </div>
-      </div>
+      </section>
 
       {/* Responsive styles */}
       <style jsx global>{`
