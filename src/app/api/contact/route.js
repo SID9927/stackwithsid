@@ -1,31 +1,46 @@
 import { NextResponse } from 'next/server'
-import nodemailer from 'nodemailer'
 import { getContactEmailTemplate } from '@/lib/emailTemplate'
 
 export async function POST(request) {
   try {
     const { name, email, subject, message } = await request.json()
 
-    // 1. Setup Nodemailer Transporter (Gmail SMTP)
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.GMAIL_USER,
-        pass: process.env.GMAIL_APP_PASSWORD, // Use App Password, not normal password
-      },
-    })
-
-    // 2. Setup Email Options
-    const mailOptions = {
-      from: `"${name}" <${process.env.GMAIL_USER}>`, // Gmail requires 'from' to be the authenticated user
-      replyTo: email,
-      to: process.env.CONTACT_RECEIVER_EMAIL || process.env.GMAIL_USER,
-      subject: `New Contact Form: ${subject}`,
-      html: getContactEmailTemplate({ name, email, subject, message }),
+    const apiKey = process.env.RESEND_API_KEY
+    if (!apiKey) {
+      console.error('RESEND_API_KEY is missing')
+      return NextResponse.json(
+        { success: false, message: 'Email sending configuration error' },
+        { status: 500 }
+      )
     }
 
-    // 3. Send Email
-    await transporter.sendMail(mailOptions)
+    const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
+    const toEmail = process.env.CONTACT_RECEIVER_EMAIL || '5065sid@gmail.com'
+
+    // Send email using Resend REST API (perfect for V8/Edge environments)
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        from: fromEmail,
+        to: toEmail,
+        reply_to: email,
+        subject: `New Contact Form: ${subject}`,
+        html: getContactEmailTemplate({ name, email, subject, message }),
+      }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      console.error('Resend API Error:', errorData)
+      return NextResponse.json(
+        { success: false, message: 'Failed to send email via Resend API', error: errorData },
+        { status: response.status }
+      )
+    }
 
     return NextResponse.json({ success: true, message: 'Email sent successfully' })
   } catch (error) {
