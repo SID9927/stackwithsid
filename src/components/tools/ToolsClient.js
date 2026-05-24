@@ -16,6 +16,14 @@ const localTools = [
     url: '/tools/image-compressor',
     category: 'Assets',
     isLocal: true,
+  },
+  {
+    id: 'git-game',
+    name: 'Interactive Git Learning Game & Visualizer',
+    description: 'Master Git commits, branching, merging, rebasing, and cherry-picking through an interactive, level-based visual puzzle game and simulator.',
+    url: '/tools/git-game',
+    category: 'Development',
+    isLocal: true,
   }
 ]
 
