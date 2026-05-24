@@ -6,8 +6,7 @@
   "compatibility_flags": ["nodejs_compat"],
   "vars": {
     "CONTACT_RECEIVER_EMAIL": "hello@dsiddharth.in",
-    "RESEND_API_KEY": "re_BNNdsPob_3JDwiMhSSPXkYRJkLhvWPTQW",
-    "RESEND_FROM_EMAIL": "onboarding@resend.dev",
+    "RESEND_FROM_EMAIL": "hello@dsiddharth.in",
     "NEXT_PUBLIC_ADMIN_EMAIL": "5065sid@gmail.com",
     "NEXT_PUBLIC_SITE_URL": "https://stack.dsiddharth.in",
     "NEXT_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_btk73tBhq2EywVyGRqIi_g_EDxxohO1",
