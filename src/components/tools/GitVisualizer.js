@@ -14,7 +14,7 @@ export default function GitVisualizer({ gitState }) {
     }
   }, [gitState.commits]);
   
-  // Render empty state if repository is not initialized
+  // 1. Render empty state if repository is not initialized
   if (!gitState.initialized) {
     return (
       <div style={{
@@ -48,7 +48,164 @@ export default function GitVisualizer({ gitState }) {
     )
   }
 
-  // 1. Assign branch tracks
+  const commits = gitState.commits || {};
+  const branches = gitState.branches || {};
+  const commitKeys = Object.keys(commits);
+
+  // 2. Render Interactive Staging Area pipeline diagram if there are 0 commits in the tree
+  if (commitKeys.length === 0) {
+    const stagedFiles = gitState.stagingArea || [];
+    const unstagedFiles = Object.keys(gitState.workingDirectory || {}).filter(f => !stagedFiles.includes(f));
+
+    return (
+      <div style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        background: 'var(--bg-secondary)',
+        padding: '24px',
+        minHeight: '320px',
+        width: '100%',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: 'var(--text-primary)',
+        fontFamily: 'var(--font-dm)'
+      }}>
+        {/* Pipeline Layout */}
+        <div style={{ 
+          display: 'flex', 
+          gap: '24px', 
+          width: '100%', 
+          maxWidth: '800px', 
+          flexWrap: 'wrap', 
+          justifyContent: 'center', 
+          alignItems: 'stretch',
+          userSelect: 'none'
+        }}>
+          
+          {/* Column 1: Working Directory */}
+          <div className="glass-card" style={{ flex: 1, minWidth: '220px', padding: '20px', background: 'rgba(239, 68, 68, 0.02)', borderColor: 'rgba(239, 68, 68, 0.15)' }}>
+            <h4 style={{ fontSize: '0.85rem', color: '#ef4444', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700 }}>
+              📁 Working Directory
+            </h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {unstagedFiles.length > 0 ? (
+                unstagedFiles.map(file => {
+                  const status = gitState.workingDirectory[file];
+                  return (
+                    <motion.div 
+                      layoutId={`file-${file}`}
+                      key={file} 
+                      style={{ 
+                        fontSize: '0.75rem', 
+                        fontFamily: 'var(--font-mono)', 
+                        padding: '8px 12px', 
+                        background: 'rgba(239, 68, 68, 0.08)',
+                        borderRadius: 8,
+                        border: '1px solid rgba(239, 68, 68, 0.2)',
+                        color: '#f87171',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}
+                    >
+                      <span>{file}</span>
+                      <span style={{ fontSize: '0.6rem', opacity: 0.8, background: 'rgba(239, 68, 68, 0.2)', padding: '2px 6px', borderRadius: 4 }}>{status}</span>
+                    </motion.div>
+                  );
+                })
+              ) : (
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center', padding: '20px 0' }}>
+                  No untracked changes
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Staging arrow */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', gap: 4 }}>
+            <span style={{ fontSize: '1.2rem' }}>➡️</span>
+            <span style={{ fontSize: '0.6rem', fontFamily: 'var(--font-mono)' }}>git add</span>
+          </div>
+
+          {/* Column 2: Staging Area */}
+          <div className="glass-card" style={{ flex: 1, minWidth: '220px', padding: '20px', background: 'rgba(16, 185, 129, 0.02)', borderColor: 'rgba(16, 185, 129, 0.15)' }}>
+            <h4 style={{ fontSize: '0.85rem', color: '#10b981', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700 }}>
+              🟢 Staging Area (Index)
+            </h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {stagedFiles.length > 0 ? (
+                stagedFiles.map(file => (
+                  <motion.div 
+                    layoutId={`file-${file}`}
+                    key={file} 
+                    style={{ 
+                      fontSize: '0.75rem', 
+                      fontFamily: 'var(--font-mono)', 
+                      padding: '8px 12px', 
+                      background: 'rgba(16, 185, 129, 0.08)',
+                      borderRadius: 8,
+                      border: '1px solid rgba(16, 185, 129, 0.2)',
+                      color: '#34d399',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between'
+                    }}
+                  >
+                    <span>{file}</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.65rem', background: 'rgba(16, 185, 129, 0.2)', padding: '2px 6px', borderRadius: 4 }}>
+                      staged <span style={{ fontWeight: 'bold' }}>✓</span>
+                    </span>
+                  </motion.div>
+                ))
+              ) : (
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center', padding: '20px 0', lineHeight: 1.5 }}>
+                  Staging area is empty.<br />
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Type `git add` to stage files.</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Commit arrow */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', gap: 4 }}>
+            <span style={{ fontSize: '1.2rem' }}>➡️</span>
+            <span style={{ fontSize: '0.6rem', fontFamily: 'var(--font-mono)' }}>git commit</span>
+          </div>
+
+          {/* Column 3: Commit history empty indicator */}
+          <div className="glass-card" style={{ flex: 1, minWidth: '200px', padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', borderStyle: 'dashed', borderColor: 'var(--border-mid)' }}>
+            <div style={{ 
+              width: 44, height: 44, borderRadius: '50%', 
+              border: '2px dashed var(--accent)', 
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: 'var(--accent)',
+              fontFamily: 'var(--font-mono)',
+              fontSize: '0.85rem',
+              fontWeight: 'bold',
+              marginBottom: 12
+            }}>
+              C0
+            </div>
+            <h4 style={{ fontSize: '0.85rem', color: 'var(--text-primary)', marginBottom: 6, fontWeight: 700 }}>Git History</h4>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center', lineHeight: 1.4 }}>
+              {stagedFiles.length > 0 ? (
+                <span style={{ color: 'var(--accent-soft)', fontWeight: 600, animation: 'pulseGlow 2s ease-in-out infinite' }}>
+                  Staged changes ready!<br/>Run `git commit -m "..."`
+                </span>
+              ) : (
+                <span>Unborn branch `main`. No commits recorded yet.</span>
+              )}
+            </p>
+          </div>
+
+        </div>
+      </div>
+    )
+  }
+
+  // 3. Render Commit Tree SVG Graph
+  // Assign branch tracks
   const branchTracks = {}
   let trackCounter = 0
   
@@ -56,7 +213,7 @@ export default function GitVisualizer({ gitState }) {
   branchTracks['main'] = 0
   
   // Sort branches to keep tracking stable
-  const sortedBranches = Object.keys(gitState.branches || {}).sort((a, b) => {
+  const sortedBranches = Object.keys(branches).sort((a, b) => {
     if (a === 'main') return -1;
     if (b === 'main') return 1;
     return a.localeCompare(b);
@@ -76,17 +233,14 @@ export default function GitVisualizer({ gitState }) {
     }
     // Fallback: search parents
     if (commit.parents && commit.parents[0]) {
-      const parent = gitState.commits[commit.parents[0]];
+      const parent = commits[commit.parents[0]];
       if (parent) return getCommitTrack(parent);
     }
     return 0;
   };
 
-  const commits = gitState.commits || {};
-  const branches = gitState.branches || {};
-
-  // 2. Parse commits in sequential/chronological order to assign columns (horizontal positions)
-  const commitList = Object.keys(commits)
+  // Parse commits in sequential/chronological order to assign columns (horizontal positions)
+  const commitList = commitKeys
     .sort((a, b) => {
       const aNum = parseInt(a.substring(1));
       const bNum = parseInt(b.substring(1));
@@ -142,7 +296,6 @@ export default function GitVisualizer({ gitState }) {
       if (!labelsByCommit[commitId]) {
         labelsByCommit[commitId] = [];
       }
-      // Check if duplicate label
       const existing = labelsByCommit[commitId].find(l => l.name === `origin/${branchName}`);
       if (!existing) {
         labelsByCommit[commitId].push({
@@ -180,8 +333,36 @@ export default function GitVisualizer({ gitState }) {
     return colors[track % colors.length];
   };
 
+  // Compact floating file status badges
+  const stagedCount = gitState.stagingArea?.length || 0;
+  const unstagedCount = Object.keys(gitState.workingDirectory || {}).filter(f => !gitState.stagingArea?.includes(f)).length;
+
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
+      
+      {/* File Status Overlay Indicator */}
+      {(stagedCount > 0 || unstagedCount > 0) && (
+        <div style={{
+          position: 'absolute',
+          top: 12,
+          right: 12,
+          background: 'rgba(15, 15, 25, 0.85)',
+          backdropFilter: 'blur(8px)',
+          border: '1px solid var(--border-subtle)',
+          borderRadius: 10,
+          padding: '6px 12px',
+          fontSize: '0.7rem',
+          color: 'var(--text-secondary)',
+          display: 'flex',
+          gap: 12,
+          zIndex: 5,
+          boxShadow: 'var(--shadow-card)'
+        }}>
+          {stagedCount > 0 && <span style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#10b981' }}></span> {stagedCount} staged</span>}
+          {unstagedCount > 0 && <span style={{ color: '#ef4444', display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#ef4444' }}></span> {unstagedCount} modified</span>}
+        </div>
+      )}
+
       {/* Scrollable Container */}
       <div 
         ref={containerRef}
