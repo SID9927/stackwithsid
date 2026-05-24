@@ -6,6 +6,13 @@ import { motion, AnimatePresence } from 'framer-motion'
 export default function GitVisualizer({ gitState }) {
   const containerRef = useRef(null)
   const [tooltip, setTooltip] = useState(null)
+
+  // Scroll to the latest commit when new commits are created
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.scrollLeft = containerRef.current.scrollWidth;
+    }
+  }, [gitState.commits]);
   
   // Render empty state if repository is not initialized
   if (!gitState.initialized) {
@@ -159,13 +166,6 @@ export default function GitVisualizer({ gitState }) {
       isActive: true
     });
   }
-
-  // Scroll to the latest commit when new commits are created
-  useEffect(() => {
-    if (containerRef.current) {
-      containerRef.current.scrollLeft = containerRef.current.scrollWidth;
-    }
-  }, [commits]);
 
   // Color palette for branches
   const getBranchColor = (track) => {
