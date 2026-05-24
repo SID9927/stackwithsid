@@ -167,6 +167,39 @@ code, pre { font-family: "JetBrains Mono", monospace; }
   50% { box-shadow: 0 0 40px hsl(270,80%,65%,0.6), 0 0 80px hsl(270,80%,55%,0.3); }
 }
 
+@keyframes pulseTextGlow {
+  0%, 100% {
+    text-shadow: 0 0 4px var(--accent-soft), 0 0 8px rgba(124, 58, 237, 0.2);
+    opacity: 0.8;
+  }
+  50% {
+    text-shadow: 0 0 12px var(--accent-glow), 0 0 20px rgba(124, 58, 237, 0.5);
+    opacity: 1;
+  }
+}
+
+@keyframes pulseSvgGlow {
+  0%, 100% {
+    stroke-width: 1.5px;
+    stroke-opacity: 0.4;
+  }
+  50% {
+    stroke-width: 3.5px;
+    stroke-opacity: 0.9;
+  }
+}
+
+@keyframes floatGlowCard {
+  0%, 100% {
+    transform: translateY(0px) scale(1);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.6), 0 0 20px rgba(124, 58, 237, 0.15);
+  }
+  50% {
+    transform: translateY(-8px) scale(1.01);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.75), 0 0 35px rgba(124, 58, 237, 0.3);
+  }
+}
+
 @media (max-width: 768px) {
   :root { --nav-height: 64px; }
 }
