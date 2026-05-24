@@ -43,3 +43,11 @@ next-env.d.ts
 # open-next build output
 .open-next/
 
+# wrangler cache
+.wrangler/
+
+# netlify cache
+.netlify/
+
+# local agent scratch folder
+scratch/
