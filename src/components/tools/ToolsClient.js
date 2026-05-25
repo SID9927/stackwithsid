@@ -8,7 +8,7 @@ import RevealOnScroll from '@/components/animations/RevealOnScroll'
 import TiltCard from '@/components/animations/TiltCard'
 
 // High-fidelity built-in interactive tools
-const localTools = [
+export const localTools = [
   {
     id: 'image-compressor',
     name: 'Universal Image Compressor & Converter',

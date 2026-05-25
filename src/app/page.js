@@ -10,13 +10,13 @@ import StatsRow from '@/components/home/StatsRow'
 import Features from '@/components/home/Features'
 import StackChips from '@/components/home/StackChips'
 import CTABanner from '@/components/home/CTABanner'
+import { localTools } from '@/components/tools/ToolsClient'
 
 // ── Data Constants ──────────────────────────────────────────────────
 const STATS_INITIAL = [
-  { label: 'Articles',   value: '50+',  icon: FileText },
-  { label: 'Dev Tools',  value: '5+',   icon: Wrench },
-  { label: 'Q&As',       value: '200+', icon: Zap },
-  // { label: 'Community',  value: '1K+',  icon: Users },
+  { label: 'Articles',   value: '0+',  icon: FileText },
+  { label: 'Dev Tools',  value: `${localTools.length}+`,   icon: Wrench },
+  { label: 'Q&As',       value: '0+', icon: Zap },
 ]
 
 const FEATURES_DATA = [
@@ -81,24 +81,47 @@ export default function HomePage() {
       if (!sb) return
 
       try {
-        // Fetch Stats
+        // Safe query helpers to handle individual table errors or missing tables
+        async function getCount(table) {
+          try {
+            const { count, error } = await sb.from(table).select('*', { count: 'exact', head: true })
+            if (error) throw error
+            return count
+          } catch (err) {
+            console.warn(`[StackWithSid] Error fetching count for ${table}:`, err)
+            return null
+          }
+        }
+
+        async function getTechStacks() {
+          try {
+            const { data, error } = await sb.from('tech_stacks').select('name').order('name')
+            if (error) throw error
+            return data || []
+          } catch (err) {
+            console.warn('[StackWithSid] Error fetching tech_stacks:', err)
+            return []
+          }
+        }
+
+        // Fetch Stats safely — catch individual failures to prevent a single database
+        // error (or missing table) from blocking the load of other stats.
         const [
-          { count: articlesCount },
-          { count: toolsCount },
-          { count: interviewCount },
-          { data: dbStacks }
+          articlesCount,
+          interviewCount,
+          dbStacks
         ] = await Promise.all([
-          sb.from('articles').select('*', { count: 'exact', head: true }),
-          sb.from('tools').select('*', { count: 'exact', head: true }),
-          sb.from('interview_questions').select('*', { count: 'exact', head: true }),
-          sb.from('tech_stacks').select('name').order('name')
+          getCount('articles'),
+          getCount('interview_questions'),
+          getTechStacks()
         ])
 
-        const totalToolsCount = (toolsCount || 0) + 1 // Increment by 1 for our premium custom compressor
+        const totalToolsCount = localTools.length
+
         setStats([
-          { label: 'Articles',   value: articlesCount ? `${articlesCount}+` : '10+',  icon: FileText },
-          { label: 'Dev Tools',  value: totalToolsCount ? `${totalToolsCount}` : '5+',  icon: Wrench },
-          { label: 'Q&As',       value: interviewCount ? `${interviewCount}+` : '50+', icon: Zap },
+          { label: 'Articles',   value: articlesCount !== null && articlesCount !== undefined ? `${articlesCount}+` : '50+',  icon: FileText },
+          { label: 'Dev Tools',  value: `${totalToolsCount}+`,  icon: Wrench },
+          { label: 'Q&As',       value: interviewCount !== null && interviewCount !== undefined ? `${interviewCount}+` : '200+', icon: Zap },
         ])
 
         // If we have stacks in DB, use them (mapping icons if possible)
